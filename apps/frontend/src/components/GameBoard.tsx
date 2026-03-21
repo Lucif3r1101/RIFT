@@ -1,4 +1,4 @@
-import { MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
+import { MouseEvent as ReactMouseEvent, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { CHARACTER_CLASSES } from "../constants/game";
 import { DeckSummary, MatchState, RoomActionEvent, RoomCard, RoomState } from "../types/game";
 import { formatTimer } from "../lib/api";
@@ -41,6 +41,40 @@ type GameBoardProps = {
   onTilt: (event: ReactMouseEvent<HTMLElement>) => void;
   onTiltReset: (event: ReactMouseEvent<HTMLElement>) => void;
 };
+
+function getCardArtSources(slug: string) {
+  if (slug.startsWith("riftforged-sentinel-")) {
+    return {
+      primary: `/assets/cards/custom/riftforged-sentinel/${slug}.png`,
+      fallback: `/assets/cards/generated/png/2x/${slug}.png`,
+      finalFallback: `/assets/cards/generated/${slug}.svg`
+    };
+  }
+
+  return {
+    primary: `/assets/cards/generated/png/2x/${slug}.png`,
+    fallback: `/assets/cards/generated/${slug}.svg`,
+    finalFallback: `/assets/cards/generated/${slug}.svg`
+  };
+}
+
+function handleCardArtError(event: SyntheticEvent<HTMLImageElement, Event>, slug: string) {
+  const image = event.currentTarget;
+  const { fallback, finalFallback } = getCardArtSources(slug);
+
+  if (image.dataset.fallbackStage === "final") {
+    return;
+  }
+
+  if (image.src.endsWith(fallback) || image.dataset.fallbackStage === "fallback") {
+    image.dataset.fallbackStage = "final";
+    image.src = finalFallback;
+    return;
+  }
+
+  image.dataset.fallbackStage = "fallback";
+  image.src = fallback;
+}
 
 function renderLobby(props: GameBoardProps) {
   const {
@@ -315,15 +349,18 @@ function TabletopBoard(props: GameBoardProps) {
               {privateHand.length === 0 ? <p className="muted">No cards in hand.</p> : null}
               {privateHand.map((card) => (
                 <article key={card.instanceId} className="hand-card hand-card-compact" onMouseMove={onTilt} onMouseLeave={onTiltReset}>
+                  {(() => {
+                    const art = getCardArtSources(card.slug);
+                    return (
                   <img
                     className="hand-card-art"
-                    src={`/assets/cards/generated/png/2x/${card.slug}.png`}
+                    src={art.primary}
                     alt={card.name}
                     loading="lazy"
-                    onError={(event) => {
-                      event.currentTarget.src = `/assets/cards/generated/${card.slug}.svg`;
-                    }}
+                    onError={(event) => handleCardArtError(event, card.slug)}
                   />
+                    );
+                  })()}
                   <strong>{card.name}</strong>
                   <span className="muted">
                     {card.type} | {card.rarity}
@@ -382,7 +419,7 @@ function TabletopBoard(props: GameBoardProps) {
                 aria-hidden="true"
               >
                 {roomAction.card ? (
-                  <img src={`/assets/cards/generated/png/2x/${roomAction.card.slug}.png`} alt="" />
+                  <img src={getCardArtSources(roomAction.card.slug).primary} alt="" onError={(event) => handleCardArtError(event, roomAction.card!.slug)} />
                 ) : (
                   <div className="table-travel-turn-mark">End</div>
                 )}
@@ -402,7 +439,7 @@ function TabletopBoard(props: GameBoardProps) {
                     {player.board.length === 0 ? <span className="lane-empty">No cards in play</span> : null}
                     {player.board.slice(0, 4).map((card) => (
                       <article key={`${player.userId}-${card.instanceId}`} className="board-card board-card-opponent">
-                        <img src={`/assets/cards/generated/png/2x/${card.slug}.png`} alt={card.name} />
+                        <img src={getCardArtSources(card.slug).primary} alt={card.name} onError={(event) => handleCardArtError(event, card.slug)} />
                         <span>{card.attack}/{card.health}</span>
                       </article>
                     ))}
@@ -418,7 +455,7 @@ function TabletopBoard(props: GameBoardProps) {
             <div className={`table-action-card ${roomAction ? "visible" : ""} ${roomAction ? `table-action-${roomAction.actionType.replace("_", "-")}` : ""}`}>
               {roomAction?.card ? (
                 <>
-                  <img src={`/assets/cards/generated/png/2x/${roomAction.card.slug}.png`} alt={roomAction.card.name} />
+                  <img src={getCardArtSources(roomAction.card.slug).primary} alt={roomAction.card.name} onError={(event) => handleCardArtError(event, roomAction.card!.slug)} />
                   <div className="table-action-copy">
                     <strong>{roomAction.card.name}</strong>
                     <span>{roomAction.actorUsername} {roomAction.actionType === "play" ? "played" : "drew"} this card</span>
@@ -443,7 +480,7 @@ function TabletopBoard(props: GameBoardProps) {
                   {me?.board.length ? null : <span className="lane-empty">Play units and spells to build your field.</span>}
                   {me?.board.slice(0, 5).map((card) => (
                     <article key={card.instanceId} className="board-card">
-                      <img src={`/assets/cards/generated/png/2x/${card.slug}.png`} alt={card.name} />
+                      <img src={getCardArtSources(card.slug).primary} alt={card.name} onError={(event) => handleCardArtError(event, card.slug)} />
                       <span>{card.attack}/{card.health}</span>
                     </article>
                   ))}
