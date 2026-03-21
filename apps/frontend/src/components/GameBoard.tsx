@@ -1,6 +1,6 @@
 import { MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 import { CHARACTER_CLASSES } from "../constants/game";
-import { DeckSummary, MatchState, RoomCard, RoomState } from "../types/game";
+import { DeckSummary, MatchState, RoomActionEvent, RoomCard, RoomState } from "../types/game";
 import { formatTimer } from "../lib/api";
 
 type GameBoardProps = {
@@ -17,6 +17,7 @@ type GameBoardProps = {
   tabletopMode: boolean;
   currentRoom: RoomState | null;
   privateHand: RoomCard[];
+  roomAction: RoomActionEvent | null;
   meReady: boolean;
   isInRoom: boolean;
   isRoomHost: boolean;
@@ -214,6 +215,7 @@ function TabletopBoard(props: GameBoardProps) {
     activeMatchState,
     currentRoom,
     privateHand,
+    roomAction,
     meReady,
     isInRoom,
     isRoomHost,
@@ -239,6 +241,24 @@ function TabletopBoard(props: GameBoardProps) {
   const activePlayerId = battle?.activePlayerId ?? activeMatchState?.activePlayerId;
   const activeSeatIndex =
     activePlayerId && currentRoom ? currentRoom.players.findIndex((player) => player.userId === activePlayerId) : -1;
+  const me = currentRoom?.players.find((player) => player.userId === props.currentUserId) ?? null;
+  const opponents = (currentRoom?.players ?? []).filter((player) => player.userId !== props.currentUserId);
+  const actorPlayer = roomAction ? currentRoom?.players.find((player) => player.userId === roomAction.actorUserId) ?? null : null;
+  const actorSeatIndex =
+    roomAction && currentRoom ? currentRoom.players.findIndex((player) => player.userId === roomAction.actorUserId) : -1;
+  const actorSeatPosition = actorSeatIndex >= 0 ? seatPositions[actorSeatIndex] ?? "top" : "top";
+  const targetPlayer = roomAction?.targetUserId
+    ? currentRoom?.players.find((player) => player.userId === roomAction.targetUserId) ?? null
+    : null;
+  const latestActionLabel = roomAction
+    ? roomAction.actionType === "draw"
+      ? `${roomAction.actorUsername} drew ${roomAction.card?.name ?? "a card"}`
+      : roomAction.actionType === "play"
+        ? `${roomAction.actorUsername} played ${roomAction.card?.name ?? "a card"}${targetPlayer ? ` on ${targetPlayer.username}` : ""}`
+        : `${roomAction.actorUsername} ended the turn`
+    : currentRoom?.status === "in_game"
+      ? "Battle live. Watch the board state update in real time."
+      : "Lobby ready. Seats, decks, and characters lock in here before battle.";
 
   useEffect(() => {
     if (!turnKey) {
@@ -259,7 +279,7 @@ function TabletopBoard(props: GameBoardProps) {
 
   return (
     <div className="grid">
-      <section className="grid table-panel tabletop-only">
+      <section className="grid table-panel tabletop-only duel-layout">
         <h3 style={{ margin: 0 }}>Tabletop Arena</h3>
         <div className="turn-banner">
           <div className={`turn-orb ${battle || activeMatchState ? "active" : ""}`} />
@@ -271,7 +291,71 @@ function TabletopBoard(props: GameBoardProps) {
           {currentRoom?.status === "open" ? <span className="muted">Waiting lobby: set ready and host starts</span> : null}
         </div>
 
-        <div className={`tabletop-surface anim-${animationPreset} ${turnShift ? "turn-shift" : ""}`}>
+        <div className="duel-shell">
+          <aside className="side-panel hand-panel">
+            <div className="side-panel-head">
+              <strong>Your Hand</strong>
+              <span className="muted">{privateHand.length} cards</span>
+            </div>
+            <div className="panel-stat-grid">
+              <div className="panel-stat">
+                <span>Mana</span>
+                <strong>{me ? `${me.mana}/${me.maxMana}` : "--"}</strong>
+              </div>
+              <div className="panel-stat">
+                <span>Deck</span>
+                <strong>{me?.deckCount ?? 0}</strong>
+              </div>
+              <div className="panel-stat">
+                <span>Board</span>
+                <strong>{me?.board.length ?? 0}</strong>
+              </div>
+            </div>
+            <div className="hand-zone hand-zone-side">
+              {privateHand.length === 0 ? <p className="muted">No cards in hand.</p> : null}
+              {privateHand.map((card) => (
+                <article key={card.instanceId} className="hand-card hand-card-compact" onMouseMove={onTilt} onMouseLeave={onTiltReset}>
+                  <img
+                    className="hand-card-art"
+                    src={`/assets/cards/generated/png/2x/${card.slug}.png`}
+                    alt={card.name}
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.src = `/assets/cards/generated/${card.slug}.svg`;
+                    }}
+                  />
+                  <strong>{card.name}</strong>
+                  <span className="muted">
+                    {card.type} | {card.rarity}
+                  </span>
+                  <span className="muted">Cost {card.cost}</span>
+                  <div className="row">
+                    <button className="button" type="button" onClick={() => onPlayCard(card.instanceId)}>
+                      Play
+                    </button>
+                    {card.type === "spell"
+                      ? possibleTargets.map((target) => (
+                          <button
+                            key={`${card.instanceId}-${target.userId}`}
+                            className="button"
+                            type="button"
+                            onClick={() => onPlayCard(card.instanceId, target.userId)}
+                          >
+                            Cast
+                          </button>
+                        ))
+                      : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </aside>
+
+          <div
+            className={`tabletop-surface anim-${animationPreset} ${turnShift ? "turn-shift" : ""} ${
+              roomAction ? `action-${roomAction.actionType.replace("_", "-")}` : ""
+            }`}
+          >
           <div className="turn-path-layer" aria-hidden="true">
             {seatPositions.map((position, index) => (
               <span key={`path-${position}`} className={`turn-path path-${position} ${activeSeatIndex === index ? "active" : ""}`} />
@@ -286,10 +370,90 @@ function TabletopBoard(props: GameBoardProps) {
           </div>
 
           <div className="rift-board-frame">
+            <div className="table-deck-stack deck-stack-top" aria-hidden="true">
+              <span>Enemy Deck</span>
+            </div>
+            <div className="table-deck-stack deck-stack-bottom" aria-hidden="true">
+              <span>Your Deck</span>
+            </div>
+            {roomAction ? (
+              <div
+                className={`table-travel-card action-${roomAction.actionType.replace("_", "-")} from-${actorSeatPosition}`}
+                aria-hidden="true"
+              >
+                {roomAction.card ? (
+                  <img src={`/assets/cards/generated/png/2x/${roomAction.card.slug}.png`} alt="" />
+                ) : (
+                  <div className="table-travel-turn-mark">End</div>
+                )}
+              </div>
+            ) : null}
+            <div className="battle-lane battle-lane-top">
+              {opponents.length === 0 ? <p className="muted">Opponent field will appear here.</p> : null}
+              {opponents.map((player) => (
+                <section key={player.userId} className="lane-player lane-player-opponent">
+                  <header className="lane-player-head">
+                    <strong>{player.username}</strong>
+                    <span>
+                      Mana {player.mana}/{player.maxMana}
+                    </span>
+                  </header>
+                  <div className="lane-card-row">
+                    {player.board.length === 0 ? <span className="lane-empty">No cards in play</span> : null}
+                    {player.board.slice(0, 4).map((card) => (
+                      <article key={`${player.userId}-${card.instanceId}`} className="board-card board-card-opponent">
+                        <img src={`/assets/cards/generated/png/2x/${card.slug}.png`} alt={card.name} />
+                        <span>{card.attack}/{card.health}</span>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
             <div className="tabletop-core">
               <p className="muted">Chronicles Table</p>
               <strong>{battle?.activePlayerId ? `Active: ${battle.activePlayerId.slice(0, 8)}` : "Waiting to Start"}</strong>
               <span className="muted">{currentRoom?.status === "in_game" ? "Battle in progress" : "Lobby setup phase"}</span>
+            </div>
+            <div className={`table-action-card ${roomAction ? "visible" : ""} ${roomAction ? `table-action-${roomAction.actionType.replace("_", "-")}` : ""}`}>
+              {roomAction?.card ? (
+                <>
+                  <img src={`/assets/cards/generated/png/2x/${roomAction.card.slug}.png`} alt={roomAction.card.name} />
+                  <div className="table-action-copy">
+                    <strong>{roomAction.card.name}</strong>
+                    <span>{roomAction.actorUsername} {roomAction.actionType === "play" ? "played" : "drew"} this card</span>
+                  </div>
+                </>
+              ) : roomAction ? (
+                <div className="table-action-copy">
+                  <strong>Turn End</strong>
+                  <span>{roomAction.actorUsername} ended the turn</span>
+                </div>
+              ) : null}
+            </div>
+            <div className="battle-lane battle-lane-bottom">
+              <section className="lane-player lane-player-self">
+                <header className="lane-player-head">
+                  <strong>{me?.username ?? "You"}</strong>
+                  <span>
+                    Mana {me ? `${me.mana}/${me.maxMana}` : "--"}
+                  </span>
+                </header>
+                <div className="lane-card-row">
+                  {me?.board.length ? null : <span className="lane-empty">Play units and spells to build your field.</span>}
+                  {me?.board.slice(0, 5).map((card) => (
+                    <article key={card.instanceId} className="board-card">
+                      <img src={`/assets/cards/generated/png/2x/${card.slug}.png`} alt={card.name} />
+                      <span>{card.attack}/{card.health}</span>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </div>
+            <div className="table-feed">
+              <span className="table-feed-label">Latest Table Action</span>
+              <strong>{latestActionLabel}</strong>
+              {targetPlayer ? <span className="muted">Target: {targetPlayer.username}</span> : null}
             </div>
           </div>
 
@@ -344,6 +508,42 @@ function TabletopBoard(props: GameBoardProps) {
               </article>
             );
           })}
+          </div>
+
+          <aside className="side-panel status-panel">
+            <div className="side-panel-head">
+              <strong>Battle Status</strong>
+              <span className="muted">{currentRoom?.players.length ?? 0} players</span>
+            </div>
+            <div className="panel-stat-grid">
+              <div className="panel-stat">
+                <span>Turn</span>
+                <strong>{battle?.turn ?? activeMatchState?.turn ?? "--"}</strong>
+              </div>
+              <div className="panel-stat">
+                <span>Timer</span>
+                <strong>{formatTimer(timer)}</strong>
+              </div>
+              <div className="panel-stat">
+                <span>Action</span>
+                <strong>{roomAction ? roomAction.actionType.replace("_", " ") : "live"}</strong>
+              </div>
+            </div>
+            <div className="status-list">
+              {(currentRoom?.players ?? []).map((player) => (
+                <article key={player.userId} className={`status-card ${player.userId === activePlayerId ? "status-active" : ""}`}>
+                  <div className="seat-head">
+                    <img className="seat-avatar" src={`/assets/avatars/${player.avatarId}.svg`} alt={player.username} />
+                    <strong>{player.username}</strong>
+                  </div>
+                  <span>HP {player.health}</span>
+                  <span>Mana {player.mana}/{player.maxMana}</span>
+                  <span>Hand {player.handCount} | Deck {player.deckCount}</span>
+                  <span>Board {player.board.length}</span>
+                </article>
+              ))}
+            </div>
+          </aside>
         </div>
 
         <div className="row">
@@ -380,48 +580,6 @@ function TabletopBoard(props: GameBoardProps) {
           </button>
         </div>
 
-        <section className="grid">
-          <h4 style={{ margin: 0 }}>Your Hand</h4>
-          <div className="hand-zone">
-            {privateHand.length === 0 ? <p className="muted">No cards in hand.</p> : null}
-            {privateHand.map((card) => (
-              <article key={card.instanceId} className="hand-card" onMouseMove={onTilt} onMouseLeave={onTiltReset}>
-                <img
-                  className="hand-card-art"
-                  src={`/assets/cards/generated/png/2x/${card.slug}.png`}
-                  alt={card.name}
-                  loading="lazy"
-                  onError={(event) => {
-                    event.currentTarget.src = `/assets/cards/generated/${card.slug}.svg`;
-                  }}
-                />
-                <strong>{card.name}</strong>
-                <span className="muted">
-                  {card.type} | {card.rarity}
-                </span>
-                <span className="muted">Cost {card.cost}</span>
-                <p className="muted">{card.description}</p>
-                <div className="row">
-                  <button className="button" type="button" onClick={() => onPlayCard(card.instanceId)}>
-                    Play
-                  </button>
-                  {card.type === "spell"
-                    ? possibleTargets.map((target) => (
-                        <button
-                          key={`${card.instanceId}-${target.userId}`}
-                          className="button"
-                          type="button"
-                          onClick={() => onPlayCard(card.instanceId, target.userId)}
-                        >
-                          Cast on {target.userId.slice(0, 6)}
-                        </button>
-                      ))
-                    : null}
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
       </section>
     </div>
   );

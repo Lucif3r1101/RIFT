@@ -20,6 +20,7 @@ import {
   GuideSection,
   MatchFoundPayload,
   MatchState,
+  RoomActionEvent,
   RoomCard,
   RoomState
 } from "./types/game";
@@ -71,6 +72,7 @@ export function App() {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>(CHARACTER_CLASSES[0].id);
   const [currentRoom, setCurrentRoom] = useState<RoomState | null>(null);
   const [privateHand, setPrivateHand] = useState<RoomCard[]>([]);
+  const [roomAction, setRoomAction] = useState<RoomActionEvent | null>(null);
   const [tabletopMode, setTabletopMode] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -264,6 +266,16 @@ export function App() {
     socket.on("room_private_state", (payload: { hand: RoomCard[] }) => {
       setPrivateHand(payload.hand ?? []);
     });
+    socket.on("room_action", (payload: RoomActionEvent) => {
+      setRoomAction(payload);
+      if (payload.actionType === "draw") {
+        playSfx("draw");
+      } else if (payload.actionType === "play") {
+        playSfx("play");
+      } else if (payload.actionType === "end_turn") {
+        playSfx("turn");
+      }
+    });
     socket.on("room_left", (payload: { roomCode: string }) => {
       if (currentRoom?.roomCode === payload.roomCode) {
         setCurrentRoom(null);
@@ -303,6 +315,14 @@ export function App() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!roomAction) {
+      return;
+    }
+    const id = window.setTimeout(() => setRoomAction(null), 1800);
+    return () => window.clearTimeout(id);
+  }, [roomAction]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -367,6 +387,7 @@ export function App() {
     setActiveMatchState(null);
     setCurrentRoom(null);
     setPrivateHand([]);
+    setRoomAction(null);
     setTabletopMode(false);
     setToasts([]);
     clearMessages();
@@ -622,6 +643,7 @@ export function App() {
               tabletopMode={tabletopMode}
               currentRoom={currentRoom}
               privateHand={privateHand}
+              roomAction={roomAction}
               meReady={Boolean(meInRoom?.ready)}
               isInRoom={Boolean(meInRoom)}
               isRoomHost={isRoomHost}

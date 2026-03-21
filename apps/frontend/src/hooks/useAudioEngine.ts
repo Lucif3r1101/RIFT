@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef } from "react";
 
-type SfxKey = "click" | "turn" | "error";
+type SfxKey = "click" | "turn" | "error" | "draw" | "play";
 
 export function useAudioEngine(enabled: boolean) {
   const ambientRef = useRef<HTMLAudioElement | null>(null);
   const sfxRef = useRef<Record<SfxKey, HTMLAudioElement | null>>({
     click: null,
     turn: null,
-    error: null
+    error: null,
+    draw: null,
+    play: null
   });
 
   useEffect(() => {
@@ -18,16 +20,20 @@ export function useAudioEngine(enabled: boolean) {
     sfxRef.current = {
       click: new Audio("/assets/audio/sfx-click.wav"),
       turn: new Audio("/assets/audio/sfx-turn.wav"),
-      error: new Audio("/assets/audio/sfx-error.wav")
+      error: new Audio("/assets/audio/sfx-error.wav"),
+      draw: new Audio("/assets/audio/sfx-click.wav"),
+      play: new Audio("/assets/audio/sfx-turn.wav")
     };
     sfxRef.current.click!.volume = 0.45;
     sfxRef.current.turn!.volume = 0.5;
     sfxRef.current.error!.volume = 0.55;
+    sfxRef.current.draw!.volume = 0.35;
+    sfxRef.current.play!.volume = 0.45;
 
     return () => {
       ambientRef.current?.pause();
       ambientRef.current = null;
-      sfxRef.current = { click: null, turn: null, error: null };
+      sfxRef.current = { click: null, turn: null, error: null, draw: null, play: null };
     };
   }, []);
 

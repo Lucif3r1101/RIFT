@@ -93,6 +93,25 @@ type RoomState = {
   players: RoomPlayer[];
 };
 
+type RoomActionPayload = {
+  roomCode: string;
+  actionType: "draw" | "play" | "end_turn";
+  actorUserId: string;
+  actorUsername: string;
+  targetUserId?: string;
+  card?: {
+    slug: string;
+    name: string;
+    type: "unit" | "spell";
+    rarity: "common" | "rare" | "epic" | "legendary";
+    cost: number;
+    attack: number;
+    health: number;
+  };
+  turn: number;
+  timestamp: string;
+};
+
 const TURN_DURATION_MS = 60_000;
 const OPEN_ROOM_TTL_MS = 15 * 60_000;
 const QUEUE_ACTION_COOLDOWN_MS = 1_500;
@@ -510,6 +529,15 @@ function emitRoomState(io: Server, room: RoomState): void {
   }
 }
 
+function emitRoomAction(io: Server, room: RoomState, payload: RoomActionPayload): void {
+  const recipientUserIds = new Set(room.players.map((player) => player.userId));
+  recipientUserIds.add(room.hostUserId);
+
+  for (const recipientUserId of recipientUserIds) {
+    emitToUser(io, recipientUserId, "room_action", payload);
+  }
+}
+
 function removeUserFromAllRooms(io: Server, userId: string): void {
   for (const [code, room] of activeRooms.entries()) {
     const userIsPlayer = room.players.some((player) => player.userId === userId);
@@ -687,8 +715,19 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
       }
 
       if (new Date(room.battle.turnDeadlineAt).getTime() <= now) {
+        const previousActiveUserId = room.battle.activePlayerId;
+        const previousActiveUsername =
+          room.players.find((player) => player.userId === previousActiveUserId)?.username ?? "Player";
         advanceRoomTurn(room);
         setRoomWinnerIfResolved(room);
+        emitRoomAction(io, room, {
+          roomCode: room.roomCode,
+          actionType: "end_turn",
+          actorUserId: previousActiveUserId,
+          actorUsername: previousActiveUsername,
+          turn: room.battle?.turn ?? 1,
+          timestamp: new Date().toISOString()
+        });
         emitRoomState(io, room);
       }
     }
@@ -1087,6 +1126,14 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
 
       advanceRoomTurn(room);
       setRoomWinnerIfResolved(room);
+      emitRoomAction(io, room, {
+        roomCode,
+        actionType: "end_turn",
+        actorUserId: userId,
+        actorUsername: room.players.find((player) => player.userId === userId)?.username ?? "Player",
+        turn: room.battle?.turn ?? 1,
+        timestamp: new Date().toISOString()
+      });
       emitRoomState(io, room);
     });
 
@@ -1125,7 +1172,27 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
         return;
       }
 
+      const nextCard = player.deck[0];
       drawCardsForPlayer(player, 1);
+      if (nextCard) {
+        emitRoomAction(io, room, {
+          roomCode,
+          actionType: "draw",
+          actorUserId: userId,
+          actorUsername: player.username,
+          card: {
+            slug: nextCard.slug,
+            name: nextCard.name,
+            type: nextCard.type,
+            rarity: nextCard.rarity,
+            cost: nextCard.cost,
+            attack: nextCard.attack,
+            health: nextCard.health
+          },
+          turn: room.battle?.turn ?? 1,
+          timestamp: new Date().toISOString()
+        });
+      }
       emitRoomState(io, room);
     });
 
@@ -1182,6 +1249,24 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
       player.deckCount = player.deck.length;
       player.discardCount = player.discard.length;
 
+      emitRoomAction(io, room, {
+        roomCode,
+        actionType: "play",
+        actorUserId: userId,
+        actorUsername: player.username,
+        targetUserId: parsed.data.targetUserId,
+        card: {
+          slug: card.slug,
+          name: card.name,
+          type: card.type,
+          rarity: card.rarity,
+          cost: card.cost,
+          attack: card.attack,
+          health: card.health
+        },
+        turn: room.battle?.turn ?? 1,
+        timestamp: new Date().toISOString()
+      });
       setRoomWinnerIfResolved(room);
       emitRoomState(io, room);
     });

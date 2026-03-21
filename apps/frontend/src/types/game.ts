@@ -91,6 +91,25 @@ export type RoomState = {
   players: RoomPlayer[];
 };
 
+export type RoomActionEvent = {
+  roomCode: string;
+  actionType: "draw" | "play" | "end_turn";
+  actorUserId: string;
+  actorUsername: string;
+  targetUserId?: string;
+  card?: {
+    slug: string;
+    name: string;
+    type: "unit" | "spell";
+    rarity: "common" | "rare" | "epic" | "legendary";
+    cost: number;
+    attack: number;
+    health: number;
+  };
+  turn: number;
+  timestamp: string;
+};
+
 export type CharacterClass = {
   id: string;
   name: string;
