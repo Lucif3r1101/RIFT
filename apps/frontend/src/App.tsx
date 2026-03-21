@@ -589,8 +589,8 @@ export function App() {
         </section>
       ) : null}
 
-      <section className="panel">
-        <div className="card">
+      <section className={`panel ${tabletopMode ? "panel-tabletop" : ""}`}>
+        <div className={`card ${tabletopMode ? "card-tabletop" : ""}`}>
           {!currentUser ? (
             <AuthPanel
               mode={mode}
@@ -676,7 +676,7 @@ export function App() {
               onTiltReset={resetTilt}
             />
           )}
-          <p className="muted footer-note">Â© 2026 Chronicles of the RIFT. All rights reserved.</p>
+          <p className={`muted footer-note ${tabletopMode ? "footer-note-tabletop" : ""}`}>© 2026 Chronicles of the RIFT. All rights reserved.</p>
         </div>
       </section>
 
@@ -714,3 +714,5 @@ export function App() {
     </div>
   );
 }
+
+
