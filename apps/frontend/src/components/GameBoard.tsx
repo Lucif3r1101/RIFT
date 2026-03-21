@@ -51,6 +51,14 @@ function getCardArtSources(slug: string) {
     };
   }
 
+  if (slug.startsWith("void-ranger-")) {
+    return {
+      primary: `/assets/cards/custom/void-ranger/${slug}.png`,
+      fallback: `/assets/cards/generated/png/2x/${slug}.png`,
+      finalFallback: `/assets/cards/generated/${slug}.svg`
+    };
+  }
+
   return {
     primary: `/assets/cards/generated/png/2x/${slug}.png`,
     fallback: `/assets/cards/generated/${slug}.svg`,
