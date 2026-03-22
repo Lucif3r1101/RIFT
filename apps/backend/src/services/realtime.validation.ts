@@ -48,7 +48,8 @@ export const roomPlayCardPayloadSchema = z.object({
 export const roomAttackPayloadSchema = z.object({
   roomCode: z.string().min(4).max(12),
   attackerCardInstanceId: z.string().min(4),
-  targetUserId: z.string().min(1)
+  targetUserId: z.string().min(1),
+  targetCardInstanceId: z.string().min(4).optional()
 });
 
 export const roomDrawCardPayloadSchema = z.object({

@@ -671,9 +671,14 @@ export function App() {
                   ? socketRef.current?.emit("room_play_card", { roomCode: currentRoom.roomCode, cardInstanceId, targetUserId })
                   : undefined
               }
-              onAttackPlayer={(attackerCardInstanceId, targetUserId) =>
+              onAttackPlayer={(attackerCardInstanceId, targetUserId, targetCardInstanceId) =>
                 currentRoom
-                  ? socketRef.current?.emit("room_attack", { roomCode: currentRoom.roomCode, attackerCardInstanceId, targetUserId })
+                  ? socketRef.current?.emit("room_attack", {
+                      roomCode: currentRoom.roomCode,
+                      attackerCardInstanceId,
+                      targetUserId,
+                      targetCardInstanceId
+                    })
                   : undefined
               }
               onConcede={() => socketRef.current?.emit("match_concede", { matchId: activeMatchState?.matchId })}

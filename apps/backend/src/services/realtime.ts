@@ -102,6 +102,7 @@ type RoomActionPayload = {
   actorUserId: string;
   actorUsername: string;
   targetUserId?: string;
+  targetCardName?: string;
   amount?: number;
   card?: {
     slug: string;
@@ -546,12 +547,21 @@ function emitRoomState(io: Server, room: RoomState): void {
   }
 }
 
+function syncPlayerCardCounts(player: RoomPlayer): void {
+  player.handCount = player.hand.length;
+  player.deckCount = player.deck.length;
+  player.discardCount = player.discard.length;
+}
+
 function executeBoardAttack(
   room: RoomState,
   attackerPlayer: RoomPlayer,
   attackerCardInstanceId: string,
-  targetUserId: string
-): { attacker: RoomCard; target: RoomPlayer; damage: number } | { error: string } {
+  targetUserId: string,
+  targetCardInstanceId?: string
+):
+  | { attacker: RoomCard; target: RoomPlayer; damage: number; targetCardName?: string }
+  | { error: string } {
   const attacker = attackerPlayer.board.find((card) => card.instanceId === attackerCardInstanceId);
   if (!attacker) {
     return { error: "Attacking unit not found on your board." };
@@ -566,8 +576,32 @@ function executeBoardAttack(
     return { error: "Target player is not available." };
   }
 
+  if (targetCardInstanceId) {
+    const targetCard = target.board.find((card) => card.instanceId === targetCardInstanceId);
+    if (!targetCard) {
+      return { error: "Target unit is not available." };
+    }
+
+    targetCard.health -= attacker.attack;
+    attacker.health -= targetCard.attack;
+    attacker.canAttack = false;
+
+    attackerPlayer.board = attackerPlayer.board.filter((card) => card.health > 0);
+    target.board = target.board.filter((card) => card.health > 0);
+    syncPlayerCardCounts(attackerPlayer);
+    syncPlayerCardCounts(target);
+
+    return {
+      attacker,
+      target,
+      damage: attacker.attack,
+      targetCardName: targetCard.name
+    };
+  }
+
   target.health = Math.max(0, target.health - attacker.attack);
   attacker.canAttack = false;
+  syncPlayerCardCounts(attackerPlayer);
 
   return {
     attacker,
@@ -1320,7 +1354,13 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
         return;
       }
 
-      const outcome = executeBoardAttack(room, player, parsed.data.attackerCardInstanceId, parsed.data.targetUserId);
+      const outcome = executeBoardAttack(
+        room,
+        player,
+        parsed.data.attackerCardInstanceId,
+        parsed.data.targetUserId,
+        parsed.data.targetCardInstanceId
+      );
       if ("error" in outcome) {
         socket.emit("room_error", { message: outcome.error });
         return;
@@ -1332,6 +1372,7 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
         actorUserId: userId,
         actorUsername: player.username,
         targetUserId: outcome.target.userId,
+        targetCardName: outcome.targetCardName,
         amount: outcome.damage,
         card: {
           slug: outcome.attacker.slug,

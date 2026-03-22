@@ -98,6 +98,7 @@ export type RoomActionEvent = {
   actorUserId: string;
   actorUsername: string;
   targetUserId?: string;
+  targetCardName?: string;
   amount?: number;
   card?: {
     slug: string;

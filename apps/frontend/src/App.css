@@ -552,6 +552,12 @@ body {
   background: linear-gradient(130deg, var(--accent), var(--accent-2));
 }
 
+.button.button-secondary {
+  background: linear-gradient(180deg, rgba(28, 33, 59, 0.96), rgba(16, 20, 38, 0.96));
+  border-color: rgba(122, 150, 194, 0.28);
+  color: #dce8ff;
+}
+
 .button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -872,6 +878,15 @@ body {
 .action-stack {
   display: grid;
   gap: 0.45rem;
+}
+
+.attack-option-group {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  border-radius: 12px;
+  border: 1px solid rgba(122, 150, 194, 0.18);
+  background: rgba(8, 13, 24, 0.62);
 }
 
 .status-card {
@@ -1365,6 +1380,12 @@ body {
   font-size: 0.62rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.board-card-ready-opponent {
+  background: rgba(25, 35, 49, 0.94);
+  color: #d9ecff;
+  border-color: rgba(139, 180, 231, 0.35);
 }
 
 .board-card:hover {
