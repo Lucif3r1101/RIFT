@@ -225,24 +225,30 @@ function renderLobby(props: GameBoardProps) {
 
         <div className="row">
           <button className="button primary" type="button" onClick={onCreateRoom} disabled={!selectedDeckId || !socketConnected}>
+            <img className="button-icon" src={getIconAssetPath("icon-host")} alt="" aria-hidden="true" />
             Create Room
           </button>
           <button className="button" type="button" onClick={onJoinRoom} disabled={!selectedDeckId || !roomCodeInput || !socketConnected}>
+            <img className="button-icon" src={getIconAssetPath("icon-room")} alt="" aria-hidden="true" />
             Join Room
           </button>
           <button className="button" type="button" onClick={onLeaveRoom} disabled={!currentRoom}>
+            <img className="button-icon" src={getIconAssetPath("icon-logout")} alt="" aria-hidden="true" />
             Leave Room
           </button>
         </div>
 
         <div className="row">
           <button className="button" type="button" onClick={onToggleReady} disabled={!currentRoom}>
+            <img className="button-icon" src={getIconAssetPath("icon-shield")} alt="" aria-hidden="true" />
             {meReady ? "Unready" : "Ready"}
           </button>
           <button className="button" type="button" onClick={onStartRoom} disabled={!currentRoom || !isRoomHost}>
+            <img className="button-icon" src={getIconAssetPath("icon-host")} alt="" aria-hidden="true" />
             Start Room (Host)
           </button>
           <button className="button" type="button" onClick={onQueueJoin} disabled={!socketConnected || !selectedDeckId}>
+            <img className="button-icon" src={getIconAssetPath("icon-room")} alt="" aria-hidden="true" />
             Quick Queue
           </button>
         </div>
@@ -429,6 +435,7 @@ function TabletopBoard(props: GameBoardProps) {
                   <span className="muted">Cost {card.cost}</span>
                   <div className="row">
                     <button className="button" type="button" onClick={() => onPlayCard(card.instanceId)}>
+                      <img className="button-icon" src={getIconAssetPath(card.type === "spell" ? "icon-spell" : "icon-unit")} alt="" aria-hidden="true" />
                       Play
                     </button>
                     {card.type === "spell"
@@ -439,6 +446,7 @@ function TabletopBoard(props: GameBoardProps) {
                             type="button"
                             onClick={() => onPlayCard(card.instanceId, target.userId)}
                           >
+                            <img className="button-icon" src={getIconAssetPath("icon-attack")} alt="" aria-hidden="true" />
                             Cast
                           </button>
                         ))
@@ -682,31 +690,38 @@ function TabletopBoard(props: GameBoardProps) {
             <>
               {isInRoom ? (
                 <button className="button primary" type="button" onClick={onToggleReady}>
+                  <img className="button-icon" src={getIconAssetPath("icon-shield")} alt="" aria-hidden="true" />
                   {meReady ? "Unready" : "Ready"}
                 </button>
               ) : (
                 <button className="button primary" type="button" onClick={onJoinAsHostPlayer}>
+                  <img className="button-icon" src={getIconAssetPath("icon-host")} alt="" aria-hidden="true" />
                   Join as Player
                 </button>
               )}
               <button className="button" type="button" onClick={onStartRoom} disabled={!isRoomHost}>
+                <img className="button-icon" src={getIconAssetPath("icon-host")} alt="" aria-hidden="true" />
                 Start Room (Host)
               </button>
               <button className="button" type="button" onClick={onLeaveRoom}>
+                <img className="button-icon" src={getIconAssetPath("icon-logout")} alt="" aria-hidden="true" />
                 Leave Room
               </button>
             </>
           ) : (
             <>
               <button className="button primary" type="button" onClick={onEndTurn}>
+                <img className="button-icon" src={getIconAssetPath("icon-timer")} alt="" aria-hidden="true" />
                 End Turn
               </button>
               <button className="button" type="button" onClick={onDrawCard}>
+                <img className="button-icon" src={getIconAssetPath("icon-unit")} alt="" aria-hidden="true" />
                 Draw Card
               </button>
             </>
           )}
           <button className="button" type="button" onClick={onConcede} disabled={!activeMatchState?.matchId}>
+            <img className="button-icon" src={getIconAssetPath("icon-attack")} alt="" aria-hidden="true" />
             Concede 1v1 Match
           </button>
         </div>
