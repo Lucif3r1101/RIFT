@@ -869,6 +869,11 @@ body {
   line-height: 1.35;
 }
 
+.action-stack {
+  display: grid;
+  gap: 0.45rem;
+}
+
 .status-card {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -1329,6 +1334,8 @@ body {
   justify-items: center;
   cursor: pointer;
   transition: transform 140ms ease, filter 140ms ease;
+  position: relative;
+  z-index: 1;
 }
 
 .board-card img {
@@ -1343,6 +1350,21 @@ body {
 .board-card span {
   font-size: 0.76rem;
   color: #cfe6ff;
+}
+
+.board-card-ready {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  z-index: 2;
+  padding: 0.12rem 0.38rem;
+  border-radius: 999px;
+  border: 1px solid rgba(105, 244, 191, 0.4);
+  background: rgba(8, 34, 28, 0.92);
+  color: #9effd8;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .board-card:hover {

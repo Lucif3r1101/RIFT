@@ -44,6 +44,7 @@ type GameBoardProps = {
   onEndTurn: () => void;
   onDrawCard: () => void;
   onPlayCard: (cardInstanceId: string, targetUserId?: string) => void;
+  onAttackPlayer: (attackerCardInstanceId: string, targetUserId: string) => void;
   onConcede: () => void;
   onTilt: (event: ReactMouseEvent<HTMLElement>) => void;
   onTiltReset: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -360,6 +361,7 @@ function TabletopBoard(props: GameBoardProps) {
     onLeaveRoom,
     onEndTurn,
     onPlayCard,
+    onAttackPlayer,
     onConcede,
     onTilt,
     onTiltReset,
@@ -418,6 +420,8 @@ function TabletopBoard(props: GameBoardProps) {
       ? `${roomAction.actorUsername} drew ${roomAction.card?.name ?? "a card"}`
       : roomAction.actionType === "play"
         ? `${roomAction.actorUsername} used ${roomAction.card?.name ?? "a card"}${targetPlayer ? ` on ${targetPlayer.username}` : ""}`
+        : roomAction.actionType === "attack"
+          ? `${roomAction.actorUsername} attacked ${targetPlayer?.username ?? "a player"} with ${roomAction.card?.name ?? "a unit"} for ${roomAction.amount ?? roomAction.card?.attack ?? 0}`
         : `${roomAction.actorUsername} ended the turn`
     : currentRoom?.status === "in_game"
       ? "Battle live. Watch the board state update in real time."
@@ -589,7 +593,7 @@ function TabletopBoard(props: GameBoardProps) {
             {roomAction?.actionType === "draw" && roomAction.card ? (
               <div className={`draw-trail ${actorIsMe ? "draw-trail-self" : "draw-trail-opponent"}`} aria-hidden="true" />
             ) : null}
-            {roomAction?.actionType === "play" && roomAction.card && targetSeatPosition ? (
+            {(roomAction?.actionType === "play" || roomAction?.actionType === "attack") && roomAction.card && targetSeatPosition ? (
               <div className={`target-beam beam-to-${targetSeatPosition}`} aria-hidden="true" />
             ) : null}
             {selectedOwnBoardCard && hoveredTargetSeatPosition ? (
@@ -642,8 +646,14 @@ function TabletopBoard(props: GameBoardProps) {
                   <img src={getCardArtSources(roomAction.card.slug).primary} alt={roomAction.card.name} onError={(event) => handleCardArtError(event, roomAction.card!.slug)} />
                   <div className="table-action-copy">
                     <strong>{roomAction.card.name}</strong>
-                    <span>{roomAction.actorUsername} {roomAction.actionType === "play" ? "used" : "drew"} this card</span>
-                    <p>{roomAction.card.description}</p>
+                    <span>
+                      {roomAction.actionType === "draw"
+                        ? `${roomAction.actorUsername} drew this card`
+                        : roomAction.actionType === "attack"
+                          ? `${roomAction.actorUsername} attacked ${targetPlayer?.username ?? "a player"}`
+                          : `${roomAction.actorUsername} used this card`}
+                    </span>
+                    <p>{roomAction.actionType === "attack" ? `${roomAction.amount ?? roomAction.card.attack} damage dealt.` : roomAction.card.description}</p>
                     {targetPlayer ? <small>Targeting {targetPlayer.username}</small> : null}
                   </div>
                 </>
@@ -670,12 +680,13 @@ function TabletopBoard(props: GameBoardProps) {
                 <div className="lane-card-row">
                   {me?.board.length ? null : <span className="lane-empty">Play units and spells to build your field.</span>}
                   {me?.board.slice(0, 5).map((card) => (
-                    <article
-                      key={card.instanceId}
-                      className={`board-card ${selectedBoardCardId === card.instanceId ? "board-card-selected" : ""}`}
-                      onClick={() => setSelectedBoardCardId((current) => (current === card.instanceId ? null : card.instanceId))}
-                    >
+                      <article
+                        key={card.instanceId}
+                        className={`board-card ${selectedBoardCardId === card.instanceId ? "board-card-selected" : ""}`}
+                        onClick={() => setSelectedBoardCardId((current) => (current === card.instanceId ? null : card.instanceId))}
+                      >
                       <img src={getCardArtSources(card.slug).primary} alt={card.name} onError={(event) => handleCardArtError(event, card.slug)} />
+                      {card.canAttack ? <small className="board-card-ready">Ready</small> : null}
                       <span>{card.attack}/{card.health}</span>
                     </article>
                   ))}
@@ -835,10 +846,26 @@ function TabletopBoard(props: GameBoardProps) {
                   <span className="status-pill">ATK {selectedOwnBoardCard.attack}</span>
                   <span className="status-pill">HP {selectedOwnBoardCard.health}</span>
                   <span className="status-pill">Cost {selectedOwnBoardCard.cost}</span>
+                  <span className="status-pill">{selectedOwnBoardCard.canAttack ? "Can Attack" : "Waiting"}</span>
                 </div>
                 <small className="muted">
                   {hoveredTargetPlayer ? `Preview targeting ${hoveredTargetPlayer.username}` : "Select an enemy lane to preview direction."}
                 </small>
+                {battle?.activePlayerId === props.currentUserId && selectedOwnBoardCard.canAttack ? (
+                  <div className="action-stack">
+                    {opponents.filter((player) => player.health > 0).map((target) => (
+                      <button
+                        key={`attack-${selectedOwnBoardCard.instanceId}-${target.userId}`}
+                        className="button"
+                        type="button"
+                        onClick={() => onAttackPlayer(selectedOwnBoardCard.instanceId, target.userId)}
+                      >
+                        <img className="button-icon" src={getIconAssetPath("icon-attack")} alt="" aria-hidden="true" />
+                        Attack {target.username}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </article>
             ) : null}
             <article className="history-panel">
@@ -853,9 +880,15 @@ function TabletopBoard(props: GameBoardProps) {
                         ? `drew ${entry.card?.name ?? "a card"}`
                         : entry.actionType === "play"
                           ? `used ${entry.card?.name ?? "a card"}`
+                          : entry.actionType === "attack"
+                            ? `attacked ${entry.targetUserId ? currentRoom?.players.find((player) => player.userId === entry.targetUserId)?.username ?? "a player" : "a player"} with ${entry.card?.name ?? "a unit"}`
                           : "ended the turn"}
                     </span>
-                    {entry.card?.description ? <small>{entry.card.description}</small> : null}
+                    {entry.actionType === "attack"
+                      ? <small>{entry.amount ?? entry.card?.attack ?? 0} damage dealt.</small>
+                      : entry.card?.description
+                        ? <small>{entry.card.description}</small>
+                        : null}
                   </div>
                 ))}
               </div>

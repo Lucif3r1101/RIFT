@@ -53,6 +53,7 @@ export type RoomCard = {
   cost: number;
   attack: number;
   health: number;
+  canAttack: boolean;
 };
 
 export type RoomPlayer = {
@@ -93,10 +94,11 @@ export type RoomState = {
 
 export type RoomActionEvent = {
   roomCode: string;
-  actionType: "draw" | "play" | "end_turn";
+  actionType: "draw" | "play" | "attack" | "end_turn";
   actorUserId: string;
   actorUsername: string;
   targetUserId?: string;
+  amount?: number;
   card?: {
     slug: string;
     name: string;
@@ -106,6 +108,7 @@ export type RoomActionEvent = {
     cost: number;
     attack: number;
     health: number;
+    canAttack: boolean;
   };
   turn: number;
   timestamp: string;

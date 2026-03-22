@@ -10,6 +10,7 @@ import { UserModel } from "../models/User.js";
 import { ALL_CARD_BLUEPRINTS } from "../data/starterCards.js";
 import {
   matchActionPayloadSchema,
+  roomAttackPayloadSchema,
   queueJoinPayloadSchema,
   roomCodePayloadSchema,
   roomCreatePayloadSchema,
@@ -71,6 +72,7 @@ type RoomCard = {
   cost: number;
   attack: number;
   health: number;
+  canAttack: boolean;
 };
 
 type RoomBattleState = {
@@ -96,10 +98,11 @@ type RoomState = {
 
 type RoomActionPayload = {
   roomCode: string;
-  actionType: "draw" | "play" | "end_turn";
+  actionType: "draw" | "play" | "attack" | "end_turn";
   actorUserId: string;
   actorUsername: string;
   targetUserId?: string;
+  amount?: number;
   card?: {
     slug: string;
     name: string;
@@ -109,6 +112,7 @@ type RoomActionPayload = {
     cost: number;
     attack: number;
     health: number;
+    canAttack: boolean;
   };
   turn: number;
   timestamp: string;
@@ -336,7 +340,8 @@ function buildFactionDeck(factionId: string): RoomCard[] {
     rarity: card.rarity,
     cost: card.cost,
     attack: card.attack,
-    health: card.health
+    health: card.health,
+    canAttack: false
   }));
 
   return shuffleCards(cards);
@@ -354,6 +359,13 @@ function drawCardsForPlayer(player: RoomPlayer, count: number): void {
   player.handCount = player.hand.length;
   player.deckCount = player.deck.length;
   player.discardCount = player.discard.length;
+}
+
+function refreshBoardAttackAvailability(player: RoomPlayer): void {
+  player.board = player.board.map((card) => ({
+    ...card,
+    canAttack: true
+  }));
 }
 
 function findRoomByCodeForActivePlayer(roomCode: string): RoomState | null {
@@ -383,6 +395,7 @@ function advanceRoomTurn(room: RoomState): void {
     nextPlayer.maxMana = Math.min(nextPlayer.maxMana + 1, 10);
     nextPlayer.mana = nextPlayer.maxMana;
     drawCardsForPlayer(nextPlayer, 1);
+    refreshBoardAttackAvailability(nextPlayer);
   }
 }
 
@@ -472,7 +485,8 @@ function executeCardEffect(room: RoomState, caster: RoomPlayer, card: RoomCard, 
     const unitCard: RoomCard = {
       ...card,
       attack: card.attack + script.unitBoardAttackBonus,
-      health: card.health + script.unitBoardHealthBonus
+      health: card.health + script.unitBoardHealthBonus,
+      canAttack: false
     };
     caster.board.push(unitCard);
   }
@@ -530,6 +544,36 @@ function emitRoomState(io: Server, room: RoomState): void {
   for (const player of room.players) {
     emitToUser(io, player.userId, "room_private_state", toRoomPrivateState(room, player.userId));
   }
+}
+
+function executeBoardAttack(
+  room: RoomState,
+  attackerPlayer: RoomPlayer,
+  attackerCardInstanceId: string,
+  targetUserId: string
+): { attacker: RoomCard; target: RoomPlayer; damage: number } | { error: string } {
+  const attacker = attackerPlayer.board.find((card) => card.instanceId === attackerCardInstanceId);
+  if (!attacker) {
+    return { error: "Attacking unit not found on your board." };
+  }
+
+  if (!attacker.canAttack) {
+    return { error: "That unit cannot attack right now." };
+  }
+
+  const target = room.players.find((player) => player.userId === targetUserId && player.userId !== attackerPlayer.userId);
+  if (!target || target.health <= 0) {
+    return { error: "Target player is not available." };
+  }
+
+  target.health = Math.max(0, target.health - attacker.attack);
+  attacker.canAttack = false;
+
+  return {
+    attacker,
+    target,
+    damage: attacker.attack
+  };
 }
 
 function emitRoomAction(io: Server, room: RoomState, payload: RoomActionPayload): void {
@@ -1236,11 +1280,74 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
           rarity: card.rarity,
           cost: card.cost,
           attack: card.attack,
-          health: card.health
+          health: card.health,
+          canAttack: card.canAttack
         },
         turn: room.battle?.turn ?? 1,
         timestamp: new Date().toISOString()
       });
+      setRoomWinnerIfResolved(room);
+      emitRoomState(io, room);
+    });
+
+    socket.on("room_attack", (payload: unknown) => {
+      if (isOnCooldown(lastRoomActionAtByUser, userId, ROOM_ACTION_COOLDOWN_MS)) {
+        socket.emit("room_error", { message: "Too many room actions. Slow down." });
+        return;
+      }
+
+      const parsed = roomAttackPayloadSchema.safeParse(payload);
+      if (!parsed.success) {
+        socket.emit("room_error", { message: "Invalid attack payload." });
+        return;
+      }
+
+      const roomCode = normalizeRoomCode(parsed.data.roomCode);
+      const room = findRoomByCodeForActivePlayer(roomCode);
+      if (!room || !room.battle) {
+        socket.emit("room_error", { message: "Active room game not found." });
+        return;
+      }
+
+      if (room.battle.activePlayerId !== userId) {
+        socket.emit("room_error", { message: "Not your turn." });
+        return;
+      }
+
+      const player = room.players.find((entry) => entry.userId === userId);
+      if (!player) {
+        socket.emit("room_error", { message: "Player not found in room." });
+        return;
+      }
+
+      const outcome = executeBoardAttack(room, player, parsed.data.attackerCardInstanceId, parsed.data.targetUserId);
+      if ("error" in outcome) {
+        socket.emit("room_error", { message: outcome.error });
+        return;
+      }
+
+      emitRoomAction(io, room, {
+        roomCode,
+        actionType: "attack",
+        actorUserId: userId,
+        actorUsername: player.username,
+        targetUserId: outcome.target.userId,
+        amount: outcome.damage,
+        card: {
+          slug: outcome.attacker.slug,
+          name: outcome.attacker.name,
+          description: outcome.attacker.description,
+          type: outcome.attacker.type,
+          rarity: outcome.attacker.rarity,
+          cost: outcome.attacker.cost,
+          attack: outcome.attacker.attack,
+          health: outcome.attacker.health,
+          canAttack: outcome.attacker.canAttack
+        },
+        turn: room.battle.turn,
+        timestamp: new Date().toISOString()
+      });
+
       setRoomWinnerIfResolved(room);
       emitRoomState(io, room);
     });

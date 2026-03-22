@@ -671,6 +671,11 @@ export function App() {
                   ? socketRef.current?.emit("room_play_card", { roomCode: currentRoom.roomCode, cardInstanceId, targetUserId })
                   : undefined
               }
+              onAttackPlayer={(attackerCardInstanceId, targetUserId) =>
+                currentRoom
+                  ? socketRef.current?.emit("room_attack", { roomCode: currentRoom.roomCode, attackerCardInstanceId, targetUserId })
+                  : undefined
+              }
               onConcede={() => socketRef.current?.emit("match_concede", { matchId: activeMatchState?.matchId })}
               onTilt={applyTilt}
               onTiltReset={resetTilt}
