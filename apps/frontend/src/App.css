@@ -423,6 +423,12 @@ body {
   min-height: 405px;
 }
 
+.auth-showcase-ad {
+  margin-top: 0.7rem;
+  background: rgba(7, 12, 24, 0.72);
+  backdrop-filter: blur(4px);
+}
+
 .auth-kicker {
   margin: 0;
   font-family: "Rajdhani", sans-serif;
@@ -452,6 +458,9 @@ body {
   background:
     radial-gradient(circle at 100% 0%, rgba(46, 230, 255, 0.08), transparent 40%),
     rgba(7, 12, 24, 0.8);
+  display: grid;
+  gap: 1rem;
+  align-content: start;
 }
 
 .tabs {
@@ -492,6 +501,23 @@ body {
 .form {
   display: grid;
   gap: 0.78rem;
+}
+
+.ad-slot {
+  border: 1px solid rgba(124, 157, 212, 0.2);
+  border-radius: 14px;
+  background: rgba(10, 17, 32, 0.82);
+  padding: 0.65rem;
+  display: grid;
+  gap: 0.45rem;
+  min-height: 110px;
+}
+
+.ad-slot-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .label {

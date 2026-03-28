@@ -1,4 +1,5 @@
 import { FormEvent, SyntheticEvent } from "react";
+import { AdSlot } from "./AdSlot";
 import { getAvatarAssetPath, getAvatarFallbackPath } from "../constants/game";
 import { AuthMode } from "../types/game";
 
@@ -78,6 +79,7 @@ export function AuthPanel(props: AuthPanelProps) {
         <p className="auth-kicker">RIFT SEASON 2026</p>
         <h2>{mode === "register" ? "Create Your Battler ID" : "Welcome Back, Challenger"}</h2>
         <p>Enter the arena, assemble your cards, and battle through tactical multiplayer rooms with live turn-based action.</p>
+        <AdSlot className="auth-showcase-ad" />
       </aside>
 
       <section className="auth-panel">
