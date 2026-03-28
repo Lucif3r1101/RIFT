@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://chronicles-of-the-rift.vercel.app/sitemap.xml

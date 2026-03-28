@@ -1,0 +1,17 @@
+{
+  "name": "Chronicles of the RIFT",
+  "short_name": "RIFT TCG",
+  "description": "Sci-fantasy multiplayer trading card battles in the browser.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08121f",
+  "theme_color": "#08121f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
