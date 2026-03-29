@@ -1,6 +1,7 @@
 import { FormEvent, MouseEvent as ReactMouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import "./App.css";
+import { AdSlot } from "./components/AdSlot";
 import { AuthPanel } from "./components/AuthPanel";
 import { GameBoard } from "./components/GameBoard";
 import { TopNav } from "./components/TopNav";
@@ -585,6 +586,53 @@ export function App() {
               First-time players get a guided lore and battle tutorial. Returning players can always reopen How to Play from
               the top bar.
             </p>
+          </div>
+        </section>
+      ) : null}
+
+      {!currentUser ? (
+        <section className="landing-content" aria-label="Chronicles of the RIFT overview">
+          <div className="landing-copy-grid">
+            <article className="landing-copy-card">
+              <span className="landing-section-kicker">World</span>
+              <h2>The Rift Is Splitting Reality</h2>
+              <p>
+                Six champions battle across unstable dimensions where citadels, void corridors, ember sanctums, iron wilds,
+                broken timelines, and abyss trenches all collide. Every deck is tied to one hero fantasy and asks you to
+                play with a different rhythm.
+              </p>
+            </article>
+
+            <article className="landing-copy-card">
+              <span className="landing-section-kicker">How To Play</span>
+              <h2>Build A Board, Spend Mana, Pressure Opponents</h2>
+              <p>
+                Create or join a room, choose one of the six predefined characters, draw your opening hand, play units to
+                your field, use spells for instant effects, and attack enemy players or their units once your board is ready.
+              </p>
+            </article>
+
+            <article className="landing-copy-card">
+              <span className="landing-section-kicker">Deck Identity</span>
+              <h2>Six Characters, Six Styles</h2>
+              <p>
+                Riftforged Sentinel controls the board, Void Ranger pressures with tempo, Ember Arcanist chains explosive
+                combos, Ironbound Beastmaster swarms, Chronomancer bends turn order, and Abyss Revenant drains value from
+                every exchange.
+              </p>
+            </article>
+          </div>
+
+          <div className="landing-ad-column">
+            <div className="landing-copy-card landing-ad-card">
+              <span className="landing-section-kicker">Sponsor</span>
+              <h2>Support The Arena</h2>
+              <p>
+                This placement sits on a real content section instead of the login flow, which is the safer place for
+                AdSense. The sign-in form stays focused, and the landing page still has room for monetization.
+              </p>
+              <AdSlot className="landing-ad-slot" />
+            </div>
           </div>
         </section>
       ) : null}
