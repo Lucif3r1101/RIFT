@@ -350,6 +350,8 @@ function TabletopBoard(props: GameBoardProps) {
   const [hoveredTargetPlayerId, setHoveredTargetPlayerId] = useState<string | null>(null);
   const [actionHistory, setActionHistory] = useState<RoomActionEvent[]>([]);
   const [defeatedSignals, setDefeatedSignals] = useState<DefeatedSignal[]>([]);
+  const [floatDmg, setFloatDmg] = useState<{ id: string; amount: number; mine: boolean }[]>([]);
+  const prevHealthRef = useRef<Record<string, number>>({});
   const [fx, setFx] = useState<{ id: string; kind: "slash" | "shield" } | null>(null);
   const [shake, setShake] = useState(false);
   const [drawFly, setDrawFly] = useState(false);
@@ -491,6 +493,33 @@ function TabletopBoard(props: GameBoardProps) {
 
     return () => window.clearTimeout(timeoutId);
   }, [currentRoom]);
+
+  // Big floating damage numbers whenever any player's life points drop (works for
+  // your attacks AND incoming attacks).
+  useEffect(() => {
+    if (!currentRoom) {
+      prevHealthRef.current = {};
+      return;
+    }
+    const next: { id: string; amount: number; mine: boolean }[] = [];
+    for (const player of currentRoom.players) {
+      const prev = prevHealthRef.current[player.userId];
+      if (prev !== undefined && player.health < prev) {
+        next.push({
+          id: `${player.userId}-${prev}-${player.health}`,
+          amount: prev - player.health,
+          mine: player.userId === props.currentUserId
+        });
+      }
+      prevHealthRef.current[player.userId] = player.health;
+    }
+    if (next.length === 0) return;
+    setFloatDmg((cur) => [...cur, ...next].slice(-4));
+    const t = window.setTimeout(() => {
+      setFloatDmg((cur) => cur.filter((d) => !next.some((n) => n.id === d.id)));
+    }, 1100);
+    return () => window.clearTimeout(t);
+  }, [currentRoom, props.currentUserId]);
 
   const attacker = isMyTurn && selectedOwnBoardCard?.canAttack && selectedOwnBoardCard.position !== "defense" ? selectedOwnBoardCard : null;
   const enemyUnits = opponents.flatMap((player) => player.board.map((unit) => ({ owner: player, unit })));
@@ -673,6 +702,12 @@ function TabletopBoard(props: GameBoardProps) {
                       <span className="plate-stats"><b key={`hp-${player.health}`} className="plate-hp hp-pop">❤ {player.health}</b> ◆ {player.mana}/{player.maxMana}</span>
                       {fx?.id === `player-${player.userId}` ? <span className="fx-overlay" aria-hidden="true" /> : null}
                     </button>
+                    <div className="opp-hand" aria-label={`${player.username} has ${player.handCount} cards`}>
+                      {Array.from({ length: Math.min(player.handCount, 8) }).map((_, h) => (
+                        <img key={h} className="opp-hand-card" src={CARD_BACK_ASSET_PATH} alt="" aria-hidden="true" />
+                      ))}
+                      <span className="opp-hand-count">{player.handCount}</span>
+                    </div>
                     <button className="grave-chip" type="button" onClick={() => setGraveyardOwner(player.userId)} title={`View ${player.username}'s graveyard`}>
                       🪦 {player.discardCount}
                     </button>
@@ -682,6 +717,14 @@ function TabletopBoard(props: GameBoardProps) {
             </div>
 
             <div className={`battlefield ${attacker ? "bf-attacking" : ""} ${shake ? "bf-shake" : ""}`}>
+              <div className="bf-center-fx" aria-hidden="true">
+                {floatDmg.map((d) => (
+                  <span key={d.id} className={`float-dmg ${d.mine ? "dmg-self" : "dmg-enemy"}`}>-{d.amount}</span>
+                ))}
+                {defeatedSignals.map((sig) => (
+                  <span key={sig.id} className="destroy-pop">💥 {sig.cardName} destroyed</span>
+                ))}
+              </div>
               <div className="bf-plane">
                 <div className="bf-row bf-enemy">
                   <span className="bf-zone-label">Enemy Field {attacker ? "· tap a target" : ""}</span>

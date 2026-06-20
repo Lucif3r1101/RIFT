@@ -4863,3 +4863,71 @@ body {
   70% { transform: translateX(-2px) rotate(-2deg); }
   100% { transform: translateX(0) rotate(0); }
 }
+
+/* ===== Center combat FX (damage numbers, destruction) ===== */
+.bf-center-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.float-dmg {
+  position: absolute;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.2rem, 7vw, 4rem);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+  animation: floatUp 1.05s ease-out forwards;
+}
+.dmg-enemy { color: #ffd166; }
+.dmg-self { color: #ff5d7a; }
+@keyframes floatUp {
+  0% { transform: translateY(20px) scale(0.6); opacity: 0; }
+  25% { transform: translateY(0) scale(1.25); opacity: 1; }
+  60% { transform: translateY(-10px) scale(1); opacity: 1; }
+  100% { transform: translateY(-46px) scale(0.95); opacity: 0; }
+}
+.destroy-pop {
+  position: absolute;
+  top: 8%;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #fff;
+  background: rgba(180, 30, 50, 0.85);
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  animation: destroyPop 1.5s ease-out forwards;
+}
+@keyframes destroyPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  20% { transform: scale(1.1); opacity: 1; }
+  75% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+/* ===== Opponent hand (face-down) ===== */
+.opp-hand {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 26px;
+}
+.opp-hand-card {
+  width: 16px;
+  height: 23px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  margin-left: -8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.opp-hand-card:first-child { margin-left: 0; }
+.opp-hand-count {
+  margin-left: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
