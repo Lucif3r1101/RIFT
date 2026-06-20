@@ -497,9 +497,10 @@ function TabletopBoard(props: GameBoardProps) {
   const myZoneCount = Math.max(ZONES, me?.board.length ?? 0);
   const fireFx = (id: string, kind: "slash" | "shield") => {
     setFx({ id, kind });
-    setShake(true);
-    window.setTimeout(() => setFx(null), 650);
-    window.setTimeout(() => setShake(false), 420);
+    // shake a touch after the strike connects, not instantly
+    window.setTimeout(() => setShake(true), 160);
+    window.setTimeout(() => setShake(false), 540);
+    window.setTimeout(() => setFx(null), 900);
   };
   const strikePlayer = (targetUserId: string, health: number) => {
     if (attacker && health > 0) {
@@ -768,6 +769,31 @@ function TabletopBoard(props: GameBoardProps) {
                 </div>
               </div>
             </div>
+
+            {(() => {
+              const mySpells = me?.spellZone ?? [];
+              const enemySpells = opponents.flatMap((p) => (p.spellZone ?? []).map((card) => ({ owner: p, card })));
+              if (mySpells.length === 0 && enemySpells.length === 0) return null;
+              return (
+                <div className="spell-zone">
+                  <span className="bf-zone-label spell-zone-label">✦ Spell Zone</span>
+                  <div className="spell-row">
+                    {enemySpells.map(({ owner, card }, i) => (
+                      <div key={`es-${card.instanceId}-${i}`} className="spell-card spell-enemy" title={`${card.name} — ${owner.username}`}>
+                        <img src={getCardArtSources(card.slug).primary} alt={card.name} loading="lazy" onError={(e) => handleCardArtError(e, card.slug)} />
+                        <span className="spell-name">{card.name}</span>
+                      </div>
+                    ))}
+                    {mySpells.map((card, i) => (
+                      <div key={`ms-${card.instanceId}-${i}`} className="spell-card spell-mine" title={card.name}>
+                        <img src={getCardArtSources(card.slug).primary} alt={card.name} loading="lazy" onError={(e) => handleCardArtError(e, card.slug)} />
+                        <span className="spell-name">{card.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="duel-piles">
               <button

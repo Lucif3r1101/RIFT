@@ -59,6 +59,7 @@ type RoomPlayer = {
   deck: RoomCard[];
   discard: RoomCard[];
   board: RoomCard[];
+  spellZone: RoomCard[];
   joinedAt: string;
 };
 
@@ -305,7 +306,8 @@ function toRoomPublicState(room: RoomState) {
       discard: player.discard,
       mana: player.mana,
       maxMana: player.maxMana,
-      board: player.board
+      board: player.board,
+      spellZone: player.spellZone
     }))
   };
 }
@@ -971,6 +973,7 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
                   deck: [],
                   discard: [],
                   board: [],
+                  spellZone: [],
                   joinedAt: new Date().toISOString()
                 }
               ]
@@ -1063,6 +1066,7 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
         deck: [],
         discard: [],
         board: [],
+        spellZone: [],
         joinedAt: new Date().toISOString()
       });
 
@@ -1209,6 +1213,7 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
           deck,
           discard: [],
           board: [],
+          spellZone: [],
           handCount: 0,
           deckCount: deck.length,
           discardCount: 0,
@@ -1404,7 +1409,12 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
 
       executeCardEffect(room, player, card, parsed.data.targetUserId, parsed.data.position ?? "attack");
       if (card.type === "spell") {
-        player.discard.push(card);
+        // Spells now stay on the field in the spell zone (cap 5); overflow is discarded.
+        if (player.spellZone.length < 5) {
+          player.spellZone.push(card);
+        } else {
+          player.discard.push(card);
+        }
       }
       player.handCount = player.hand.length;
       player.deckCount = player.deck.length;

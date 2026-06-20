@@ -73,6 +73,7 @@ export type RoomPlayer = {
   mana: number;
   maxMana: number;
   board: RoomCard[];
+  spellZone?: RoomCard[];
 };
 
 export type RoomBattleState = {

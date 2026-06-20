@@ -4516,26 +4516,29 @@ body {
   content: "";
   position: absolute;
   top: 46%;
-  left: -30%;
-  width: 160%;
-  height: 6px;
+  left: -40%;
+  width: 180%;
+  height: 5px;
   background: linear-gradient(90deg, transparent, #ffffff, #ff4d6d, transparent);
-  box-shadow: 0 0 14px #ff4d6d;
-  transform: rotate(-32deg);
-  animation: slashSweep 0.5s ease-out forwards;
+  box-shadow: 0 0 16px #ff4d6d;
+  transform: rotate(-32deg) translateX(-70%);
+  opacity: 0;
+  animation: slashSweep 0.85s cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
 }
 @keyframes slashSweep {
-  0% { transform: rotate(-32deg) translateX(-60%); opacity: 0; }
-  35% { opacity: 1; }
-  100% { transform: rotate(-32deg) translateX(60%); opacity: 0; }
+  0% { transform: rotate(-32deg) translateX(-70%); opacity: 0; }
+  18% { opacity: 0; }
+  46% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: rotate(-32deg) translateX(70%); opacity: 0; }
 }
-.fx-slash { animation: hitFlash 0.5s ease-out; }
+.fx-slash { animation: hitFlash 0.85s ease-out; }
 @keyframes hitFlash {
-  0%, 100% { box-shadow: none; }
-  30% { box-shadow: 0 0 0 3px rgba(255, 77, 109, 0.85), 0 0 22px rgba(255, 77, 109, 0.6); }
+  0%, 18%, 100% { box-shadow: none; }
+  46% { box-shadow: 0 0 0 3px rgba(255, 77, 109, 0.9), 0 0 26px rgba(255, 77, 109, 0.65); }
 }
 
-/* Shield: a wall icon pops when an attack is blocked */
+/* Shield: a wall icon rises, holds, then fades when an attack is blocked */
 .fx-shield .fx-overlay::before {
   content: "🛡";
   position: absolute;
@@ -4543,13 +4546,20 @@ body {
   display: grid;
   place-items: center;
   font-size: 2.2rem;
-  filter: drop-shadow(0 0 10px #8ce8ff);
-  animation: shieldPop 0.6s ease-out forwards;
+  filter: drop-shadow(0 0 12px #8ce8ff);
+  opacity: 0;
+  animation: shieldPop 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.fx-shield { animation: blockFlash 0.9s ease-out; }
+@keyframes blockFlash {
+  0%, 100% { box-shadow: none; }
+  40% { box-shadow: 0 0 0 3px rgba(140, 232, 255, 0.9), 0 0 24px rgba(96, 173, 255, 0.6); }
 }
 @keyframes shieldPop {
-  0% { transform: scale(0.4); opacity: 0; }
-  40% { transform: scale(1.25); opacity: 1; }
-  100% { transform: scale(1); opacity: 0; }
+  0% { transform: translateY(12px) scale(0.5); opacity: 0; }
+  35% { transform: translateY(0) scale(1.2); opacity: 1; }
+  70% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-4px) scale(1); opacity: 0; }
 }
 
 .plate { position: relative; }
@@ -4725,3 +4735,44 @@ body {
 .lg-atk { color: #ff8d6e; border-color: rgba(255, 122, 89, 0.5); }
 .lg-def { color: #8ce8ff; border-color: rgba(96, 173, 255, 0.5); }
 .lg-spell { color: #c182ff; border-color: rgba(193, 130, 255, 0.5); }
+
+/* ===== Spell zone ===== */
+.spell-zone {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgba(193, 130, 255, 0.4);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(40, 20, 60, 0.4), rgba(20, 12, 30, 0.5));
+  padding: 0.5rem 0.7rem;
+}
+.spell-zone-label { color: #c182ff; }
+.spell-row {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.spell-card {
+  position: relative;
+  width: 64px;
+  border: 1px solid rgba(193, 130, 255, 0.5);
+  border-radius: 9px;
+  overflow: hidden;
+  background: rgba(20, 12, 30, 0.8);
+}
+.spell-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.spell-card .spell-name {
+  display: block;
+  font-size: 0.6rem;
+  text-align: center;
+  padding: 1px 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spell-enemy { border-color: rgba(255, 111, 140, 0.5); opacity: 0.92; }
+.spell-mine { border-color: rgba(193, 130, 255, 0.7); }

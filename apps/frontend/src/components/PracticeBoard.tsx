@@ -15,6 +15,7 @@ type PPlayer = {
   hand: RoomCard[];
   deck: RoomCard[];
   discard: RoomCard[];
+  spellZone: RoomCard[];
 };
 
 type PState = {
@@ -72,7 +73,7 @@ function toRoomCard(card: ApiCard, owner: string, n: number): RoomCard {
 function makePlayer(userId: string, username: string, avatarId: string, characterId: string, pool: ApiCard[]): PPlayer {
   const deck = shuffle(pool).slice(0, DECK_SIZE).map((c, i) => toRoomCard(c, userId, i));
   const hand = deck.splice(0, HAND_SIZE);
-  return { userId, username, avatarId, characterId, health: START_HP, mana: 0, maxMana: 1, board: [], hand, deck, discard: [] };
+  return { userId, username, avatarId, characterId, health: START_HP, mana: 0, maxMana: 1, board: [], hand, deck, discard: [], spellZone: [] };
 }
 
 // Deep-ish clone so React sees new refs.
@@ -82,7 +83,8 @@ function clone(s: PState): PState {
     board: p.board.map((c) => ({ ...c })),
     hand: p.hand.map((c) => ({ ...c })),
     deck: p.deck.map((c) => ({ ...c })),
-    discard: p.discard.map((c) => ({ ...c }))
+    discard: p.discard.map((c) => ({ ...c })),
+    spellZone: p.spellZone.map((c) => ({ ...c }))
   });
   return { ...s, you: cp(s.you), bot: cp(s.bot) };
 }
@@ -228,7 +230,8 @@ export function PracticeBoard({ onExit }: { onExit: () => void }) {
       discardCount: p.discard.length,
       mana: p.mana,
       maxMana: p.maxMana,
-      board: p.board
+      board: p.board,
+      spellZone: p.spellZone
     });
     return {
       roomCode: "SOLO",
@@ -326,9 +329,10 @@ export function PracticeBoard({ onExit }: { onExit: () => void }) {
           if (card.type === "unit") {
             s.you.board.push({ ...card, position: position ?? "attack", canAttack: false, positionChanged: false });
           } else {
-            // simple spell: 2 damage to the bot
+            // simple spell: 2 damage to the bot, then the spell stays in your spell zone
             s.bot.health = Math.max(0, s.bot.health - 2);
-            s.you.discard.push(card);
+            if (s.you.spellZone.length < 5) s.you.spellZone.push(card);
+            else s.you.discard.push(card);
           }
         })
       }
