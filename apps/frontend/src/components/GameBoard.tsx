@@ -10,6 +10,7 @@ import {
 import { DeckSummary, MatchState, RoomActionEvent, RoomCard, RoomState } from "../types/game";
 import { formatTimer } from "../lib/api";
 import { getCardArtSources, handleCardArtError } from "../lib/cardArt";
+import { VictoryOverlay } from "./VictoryOverlay";
 
 type GameBoardProps = {
   currentUserId: string;
@@ -322,6 +323,9 @@ function TabletopBoard(props: GameBoardProps) {
     ? currentRoom?.players.find((player) => player.userId === activePlayerId)?.username ?? "Player"
     : null;
   const actorPlayer = roomAction ? currentRoom?.players.find((player) => player.userId === roomAction.actorUserId) ?? null : null;
+  const winnerId = battle?.winnerId ?? activeMatchState?.winnerId ?? null;
+  const winnerName = winnerId ? currentRoom?.players.find((player) => player.userId === winnerId)?.username ?? "Your opponent" : "";
+  const iWon = Boolean(winnerId) && winnerId === props.currentUserId;
   const actorSeatIndex =
     roomAction && currentRoom ? currentRoom.players.findIndex((player) => player.userId === roomAction.actorUserId) : -1;
   const actorSeatPosition = actorSeatIndex >= 0 ? seatPositions[actorSeatIndex] ?? "top" : "top";
@@ -430,6 +434,7 @@ function TabletopBoard(props: GameBoardProps) {
 
   return (
     <div className="grid">
+      {winnerId ? <VictoryOverlay won={iWon} winnerName={winnerName} onExit={props.onLeaveRoom} /> : null}
       <section className="grid table-panel tabletop-only duel-layout">
         <h3 style={{ margin: 0 }}>Tabletop Arena</h3>
         <div className="turn-banner">
