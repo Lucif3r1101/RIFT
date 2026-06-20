@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_URL } from "../constants/game";
 import { getCardArtSources, handleCardArtError, factionFromSlug } from "../lib/cardArt";
+import { CardDetailModal, DetailCard } from "./CardDetailModal";
 
 export type LibraryCard = {
   id: string;
@@ -39,6 +40,7 @@ export function CardLibrary({ onClose }: CardLibraryProps) {
   const [faction, setFaction] = useState("all");
   const [type, setType] = useState("all");
   const [rarity, setRarity] = useState("all");
+  const [detail, setDetail] = useState<DetailCard | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -77,6 +79,7 @@ export function CardLibrary({ onClose }: CardLibraryProps) {
 
   return (
     <section className="library" aria-label="Card library">
+      {detail ? <CardDetailModal card={detail} onClose={() => setDetail(null)} /> : null}
       <div className="library-head">
         <div>
           <span className="landing-section-kicker">Card Library</span>
@@ -131,7 +134,7 @@ export function CardLibrary({ onClose }: CardLibraryProps) {
           ) : (
             <div className="library-grid">
               {filtered.map((card) => (
-                <article key={card.id} className={`library-card rarity-${card.rarity}`}>
+                <article key={card.id} className={`library-card rarity-${card.rarity}`} role="button" tabIndex={0} onClick={() => setDetail(card)} title={`${card.name} — tap for details`}>
                   <div className="library-card-art">
                     <img
                       src={getCardArtSources(card.slug).primary}

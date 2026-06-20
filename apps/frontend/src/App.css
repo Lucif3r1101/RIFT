@@ -4776,3 +4776,90 @@ body {
 }
 .spell-enemy { border-color: rgba(255, 111, 140, 0.5); opacity: 0.92; }
 .spell-mine { border-color: rgba(193, 130, 255, 0.7); }
+
+/* ===== Card detail modal ===== */
+.card-detail {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.8rem;
+  background: linear-gradient(165deg, rgba(15, 27, 50, 0.98), rgba(8, 13, 26, 0.98));
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  animation: cardIn 220ms ease;
+}
+.card-detail-close { position: absolute; top: 0.6rem; right: 0.6rem; z-index: 2; }
+.card-detail-art {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.card-detail-art img { width: 100%; height: 100%; object-fit: cover; }
+.cd-cost, .cd-atk, .cd-def, .cd-spelltag {
+  position: absolute;
+  font-weight: 800;
+  border-radius: 8px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+.cd-cost { top: 0.5rem; left: 0.5rem; background: linear-gradient(140deg,#8ce8ff,#2ee6ff); color: #07111f; }
+.cd-atk { bottom: 0.5rem; left: 0.5rem; background: linear-gradient(140deg,#ffd166,#ff9f1a); color:#07111f; }
+.cd-def { bottom: 0.5rem; right: 0.5rem; background: linear-gradient(140deg,#8ce8ff,#2ea6ff); color:#07111f; }
+.cd-spelltag { bottom: 0.5rem; left: 0.5rem; background: rgba(124,58,237,0.7); color:#fff; }
+.card-detail-body { display: grid; gap: 0.55rem; }
+.card-detail-body h3 { margin: 0; font-family: "Rajdhani", sans-serif; font-size: 1.5rem; }
+.cd-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.cd-tag { font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); text-transform: capitalize; }
+.cd-tag.tag-legendary { color:#ffc454; border-color: rgba(255,196,84,0.5); }
+.cd-tag.tag-epic { color:#c182ff; border-color: rgba(193,130,255,0.5); }
+.cd-tag.tag-rare { color:#60adff; border-color: rgba(96,173,255,0.5); }
+.cd-desc { margin: 0; color: #cfddf7; font-size: 0.9rem; line-height: 1.55; }
+.cd-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px,1fr)); gap: 0.5rem; }
+.cd-stats-grid div { border: 1px solid var(--line); border-radius: 10px; padding: 0.5rem; display: grid; gap: 0.15rem; text-align: center; }
+.cd-stats-grid span { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.cd-stats-grid strong { font-size: 1rem; }
+.cd-profile { border: 1px solid rgba(46,230,255,0.3); background: rgba(46,230,255,0.07); border-radius: 10px; padding: 0.6rem 0.7rem; display: grid; gap: 0.15rem; }
+.cd-profile strong { color: #8ce8ff; }
+.cd-profile span { font-size: 0.84rem; color: #cfddf7; }
+
+/* ⓘ info button on cards */
+.card-info-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(3, 7, 18, 0.75);
+  color: #8ce8ff;
+  font-size: 0.72rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 4;
+}
+.card-info-btn:hover { background: rgba(46, 230, 255, 0.3); color: #fff; }
+.hand-card-media .card-info-btn { top: 4px; right: 4px; width: 20px; height: 20px; }
+
+/* move the ready dot to top-left so it doesn't clash with ⓘ */
+.tcg-ready { left: 4px; right: auto; }
+
+.library-card { cursor: pointer; }
+
+/* Deck shuffle flourish at duel start */
+.pile-deck .pile-art { animation: deckShuffle 0.7s ease 1; }
+@keyframes deckShuffle {
+  0% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-3px) rotate(-4deg); }
+  45% { transform: translateX(3px) rotate(4deg); }
+  70% { transform: translateX(-2px) rotate(-2deg); }
+  100% { transform: translateX(0) rotate(0); }
+}

@@ -10,6 +10,7 @@ import {
 import { DeckSummary, MatchState, RoomActionEvent, RoomCard, RoomState } from "../types/game";
 import { formatTimer } from "../lib/api";
 import { getCardArtSources, handleCardArtError } from "../lib/cardArt";
+import { CardDetailModal, DetailCard } from "./CardDetailModal";
 
 // Lottie is heavy; load the victory overlay only when a match actually ends.
 const VictoryOverlay = lazy(() => import("./VictoryOverlay").then((m) => ({ default: m.VictoryOverlay })));
@@ -353,6 +354,7 @@ function TabletopBoard(props: GameBoardProps) {
   const [shake, setShake] = useState(false);
   const [drawFly, setDrawFly] = useState(false);
   const [graveyardOwner, setGraveyardOwner] = useState<string | null>(null);
+  const [detailCard, setDetailCard] = useState<DetailCard | null>(null);
   const [showCoach, setShowCoach] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("tcg-board-coach-v1") !== "seen";
@@ -534,6 +536,8 @@ function TabletopBoard(props: GameBoardProps) {
         </Suspense>
       ) : null}
 
+      {detailCard ? <CardDetailModal card={detailCard} onClose={() => setDetailCard(null)} /> : null}
+
       {graveyardOwner ? (() => {
         const gravePlayer = currentRoom?.players.find((p) => p.userId === graveyardOwner) ?? null;
         const cards = gravePlayer?.discard ?? [];
@@ -564,11 +568,11 @@ function TabletopBoard(props: GameBoardProps) {
               ) : (
                 <div className="grave-grid">
                   {cards.map((card, i) => (
-                    <article key={`${card.instanceId}-${i}`} className={`grave-card rarity-${card.rarity}`}>
+                    <button key={`${card.instanceId}-${i}`} type="button" className={`grave-card rarity-${card.rarity}`} onClick={() => setDetailCard(card)} title={`${card.name} — tap for details`}>
                       <img src={getCardArtSources(card.slug).primary} alt={card.name} loading="lazy" onError={(e) => handleCardArtError(e, card.slug)} />
                       <span className="grave-name">{card.name}</span>
                       <span className="grave-stats">{card.type === "unit" ? `⚔ ${card.attack} · 🛡 ${card.health}` : "Spell"}</span>
-                    </article>
+                    </button>
                   ))}
                 </div>
               )}
@@ -713,6 +717,7 @@ function TabletopBoard(props: GameBoardProps) {
                                 <span className="tcg-name">{unit.name}</span>
                                 <span className="tcg-atk">{unit.attack}</span>
                                 <span className="tcg-def">{unit.health}</span>
+                                <span className="card-info-btn" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setDetailCard(unit); }}>ⓘ</span>
                               </>
                             )}
                             {fxClass ? <span className="fx-overlay" aria-hidden="true" /> : null}
@@ -755,11 +760,12 @@ function TabletopBoard(props: GameBoardProps) {
                             <span className="tcg-def">{unit.health}</span>
                             {inDef ? <span className="tcg-pos">🛡</span> : null}
                             {canAct ? <span className="tcg-ready">●</span> : null}
+                            <span className="card-info-btn" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setDetailCard(unit); }}>ⓘ</span>
                             {fxClass ? <span className="fx-overlay" aria-hidden="true" /> : null}
                           </div>
                           {canFlip ? (
-                            <button className="flip-btn" type="button" onClick={() => onSetPosition(unit.instanceId, inDef ? "attack" : "defense")}>
-                              ⟳ {inDef ? "Attack" : "Defend"}
+                            <button className={`flip-btn ${inDef ? "to-attack" : "to-defend"}`} type="button" onClick={() => onSetPosition(unit.instanceId, inDef ? "attack" : "defense")} title="Change battle position (once per turn)">
+                              ⟳ {inDef ? "To Attack" : "To Defense"}
                             </button>
                           ) : null}
                         </div>
@@ -779,16 +785,16 @@ function TabletopBoard(props: GameBoardProps) {
                   <span className="bf-zone-label spell-zone-label">✦ Spell Zone</span>
                   <div className="spell-row">
                     {enemySpells.map(({ owner, card }, i) => (
-                      <div key={`es-${card.instanceId}-${i}`} className="spell-card spell-enemy" title={`${card.name} — ${owner.username}`}>
+                      <button key={`es-${card.instanceId}-${i}`} type="button" className="spell-card spell-enemy" title={`${card.name} — ${owner.username}`} onClick={() => setDetailCard(card)}>
                         <img src={getCardArtSources(card.slug).primary} alt={card.name} loading="lazy" onError={(e) => handleCardArtError(e, card.slug)} />
                         <span className="spell-name">{card.name}</span>
-                      </div>
+                      </button>
                     ))}
                     {mySpells.map((card, i) => (
-                      <div key={`ms-${card.instanceId}-${i}`} className="spell-card spell-mine" title={card.name}>
+                      <button key={`ms-${card.instanceId}-${i}`} type="button" className="spell-card spell-mine" title={card.name} onClick={() => setDetailCard(card)}>
                         <img src={getCardArtSources(card.slug).primary} alt={card.name} loading="lazy" onError={(e) => handleCardArtError(e, card.slug)} />
                         <span className="spell-name">{card.name}</span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -818,7 +824,11 @@ function TabletopBoard(props: GameBoardProps) {
                 onClick={() => setGraveyardOwner(props.currentUserId)}
                 title="View graveyard"
               >
-                <img className="pile-art" src={CARD_BACK_ASSET_PATH} alt="" aria-hidden="true" />
+                {me?.discard && me.discard.length > 0 ? (
+                  <img className="pile-art" src={getCardArtSources(me.discard[me.discard.length - 1].slug).primary} alt="" onError={(e) => handleCardArtError(e, me.discard![me.discard!.length - 1].slug)} />
+                ) : (
+                  <img className="pile-art pile-empty-art" src={CARD_BACK_ASSET_PATH} alt="" aria-hidden="true" />
+                )}
                 <span key={`disc-${me?.discardCount ?? 0}`} className="pile-count pile-count-pop">{me?.discardCount ?? 0}</span>
                 <span className="pile-label">Graveyard</span>
               </button>
@@ -846,6 +856,7 @@ function TabletopBoard(props: GameBoardProps) {
                       <div className="hand-card-media">
                         <img className="hand-card-art" src={art.primary} alt={card.name} loading="lazy" onError={(e) => handleCardArtError(e, card.slug)} />
                         <span className={`hand-cost ${affordable ? "" : "hand-cost-short"}`} title="Mana cost">{card.cost}</span>
+                        <button className="card-info-btn" type="button" onClick={() => setDetailCard(card)} title="Card details" aria-label="Card details">ⓘ</button>
                         {card.type === "unit" ? (
                           <span className="hand-unit-stats">⚔ {card.attack} &nbsp; 🛡 {card.health}</span>
                         ) : (
