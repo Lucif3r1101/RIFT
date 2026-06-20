@@ -477,6 +477,27 @@ function TabletopBoard(props: GameBoardProps) {
     return () => window.clearTimeout(timeoutId);
   }, [currentRoom]);
 
+  const attacker = isMyTurn && selectedOwnBoardCard?.canAttack ? selectedOwnBoardCard : null;
+  const strikePlayer = (targetUserId: string, health: number) => {
+    if (attacker && health > 0) {
+      onAttackPlayer(attacker.instanceId, targetUserId);
+      setSelectedBoardCardId(null);
+    }
+  };
+  const strikeUnit = (targetUserId: string, unitId: string) => {
+    if (attacker) {
+      onAttackPlayer(attacker.instanceId, targetUserId, unitId);
+      setSelectedBoardCardId(null);
+    }
+  };
+  const inGame = currentRoom?.status === "in_game";
+  const turnHeading = !inGame ? "Waiting to start" : isMyTurn ? "Your turn" : `${activePlayerName ?? "Opponent"}'s turn`;
+  const turnHint = !inGame
+    ? "Ready up — the host starts the duel."
+    : isMyTurn
+      ? "Play cards, then tap a unit to attack. End Turn when done."
+      : "Sit tight until it's your turn.";
+
   return (
     <div className="grid">
       {winnerId ? (
@@ -490,563 +511,200 @@ function TabletopBoard(props: GameBoardProps) {
           <div className="coach-card" onClick={(e) => e.stopPropagation()}>
             <h3>How a duel works</h3>
             <ol className="coach-steps">
-              <li><strong>Turn bar (top):</strong> shows whose turn it is, your ❤ health, ◆ mana, and the timer.</li>
-              <li><strong>Your Hand (left):</strong> tap <em>Play Unit</em> to put a unit on your field, or <em>Use Spell</em> to fire its effect. Each card costs ◆ mana.</li>
-              <li><strong>The table (center):</strong> your units sit on Your Field (bottom); opponents are around the table.</li>
-              <li><strong>Attack:</strong> select one of your units, then choose an enemy player or their unit to attack.</li>
-              <li><strong>End Turn</strong> when you're done — mana and a fresh card come next turn.</li>
-              <li><strong>Win:</strong> reduce every opponent's health to 0.</li>
+              <li><strong>Turn bar:</strong> shows whose turn it is, your ❤ health, ◆ mana, and the timer.</li>
+              <li><strong>Your Hand (bottom):</strong> tap <em>Play</em> to drop a unit, or <em>Cast</em> a spell. Each card costs ◆ mana.</li>
+              <li><strong>Your Field:</strong> your units sit here. Tap one (when it can act), then tap an enemy to attack.</li>
+              <li><strong>Opponents (top):</strong> attack their units or them directly to lower their ❤.</li>
+              <li><strong>End Turn</strong> when done — you get mana and a card next turn.</li>
+              <li><strong>Win</strong> by dropping every opponent to 0 ❤.</li>
             </ol>
             <button className="button primary auth-submit" type="button" onClick={dismissCoach}>Got it</button>
           </div>
         </div>
       ) : null}
 
-      <section className="grid table-panel tabletop-only duel-layout">
-        {(() => {
-          const inGame = currentRoom?.status === "in_game";
-          const isMyTurn = Boolean(activePlayerId) && activePlayerId === props.currentUserId;
-          const status = !inGame ? "lobby" : isMyTurn ? "mine" : "other";
-          const heading = !inGame ? "Waiting to start" : isMyTurn ? "Your turn" : `${activePlayerName ?? "Opponent"}'s turn`;
-          const hint = !inGame
-            ? "Ready up — the host starts the duel."
-            : isMyTurn
-              ? "Play cards from your hand, attack with your units, then End Turn."
-              : "Watch the board until it's your turn.";
-          return (
-            <div className={`battle-status-bar bsb-${status}`}>
-              <div className="bsb-turn">
-                <span className="bsb-dot" />
-                <div>
-                  <strong>{heading}</strong>
-                  <span className="bsb-hint">{hint}</span>
-                </div>
-              </div>
-              <div className="bsb-stats">
-                <span className="bsb-stat bsb-hp">❤ {me?.health ?? "--"}</span>
-                <span className="bsb-stat bsb-mana">◆ {me ? `${me.mana}/${me.maxMana}` : "--"}</span>
-                <span className="bsb-stat bsb-timer">⏱ {formatTimer(timer)}</span>
-                <span className="bsb-stat">Turn {battle?.turn ?? activeMatchState?.turn ?? "--"}</span>
-                <span className="bsb-stat">Room {currentRoom?.roomCode ?? "--"}</span>
-                <button className="bsb-help" type="button" onClick={() => setShowCoach(true)} aria-label="How to play">?</button>
-              </div>
+      <section className="duel">
+        <div className={`battle-status-bar ${!inGame ? "bsb-lobby" : isMyTurn ? "bsb-mine" : "bsb-other"}`}>
+          <div className="bsb-turn">
+            <span className="bsb-dot" />
+            <div>
+              <strong>{turnHeading}</strong>
+              <span className="bsb-hint">{turnHint}</span>
             </div>
-          );
-        })()}
+          </div>
+          <div className="bsb-stats">
+            <span className="bsb-stat bsb-hp">❤ {me?.health ?? "--"}</span>
+            <span className="bsb-stat bsb-mana">◆ {me ? `${me.mana}/${me.maxMana}` : "--"}</span>
+            <span className="bsb-stat bsb-timer">⏱ {formatTimer(timer)}</span>
+            <span className="bsb-stat">Turn {battle?.turn ?? activeMatchState?.turn ?? "--"}</span>
+            <span className="bsb-stat">Room {currentRoom?.roomCode ?? "--"}</span>
+            <button className="bsb-help" type="button" onClick={() => setShowCoach(true)} aria-label="How to play">?</button>
+          </div>
+        </div>
 
-        <div className="duel-shell">
-          <aside className="side-panel hand-panel">
-            <div className="side-panel-head">
-              <strong>Your Hand</strong>
-              <span className="muted">{privateHand.length} cards</span>
-            </div>
-            <div className="panel-stat-grid">
-              <div className="panel-stat">
-                <span>Mana</span>
-                <strong>{me ? `${me.mana}/${me.maxMana}` : "--"}</strong>
-              </div>
-              <div className="panel-stat">
-                <span>Deck</span>
-                <strong>{me?.deckCount ?? 0}</strong>
-              </div>
-              <div className="panel-stat">
-                <span>Board</span>
-                <strong>{me?.board.length ?? 0}</strong>
-              </div>
-            </div>
-            <div className="hand-zone hand-zone-side">
-              {privateHand.length === 0 ? <p className="muted">No cards in hand.</p> : null}
-              {privateHand.map((card) => {
-                const art = getCardArtSources(card.slug);
-                const affordable = (me?.mana ?? 0) >= card.cost;
-                const playable = isMyTurn && affordable;
-                const reason = !isMyTurn ? "Wait for your turn" : !affordable ? `Needs ${card.cost} mana` : "";
+        {!inGame ? (
+          <div className="duel-wait">
+            <p className="muted">Waiting room — set ready and the host starts the duel.</p>
+            <div className="roster">
+              {currentRoom?.players.map((player) => {
+                const character = CHARACTER_CLASSES.find((c) => c.id === player.characterId);
                 return (
-                <article
-                  key={card.instanceId}
-                  className={`hand-card hand-card-compact ${!affordable ? "hand-unaffordable" : ""} ${playable ? "hand-playable" : ""}`}
-                  onMouseMove={onTilt}
-                  onMouseLeave={onTiltReset}
-                >
-                  <div className="hand-card-media">
-                    <img
-                      className="hand-card-art"
-                      src={art.primary}
-                      alt={card.name}
-                      loading="lazy"
-                      onError={(event) => handleCardArtError(event, card.slug)}
-                    />
-                    <span className={`hand-cost ${affordable ? "" : "hand-cost-short"}`} title="Mana cost">{card.cost}</span>
-                    {card.type === "unit" ? (
-                      <span className="hand-unit-stats" title="Attack / Health">⚔ {card.attack} &nbsp; ❤ {card.health}</span>
-                    ) : (
-                      <span className="hand-type-tag">Spell</span>
-                    )}
+                  <div key={player.userId} className={`roster-row ${player.ready ? "is-ready" : ""}`}>
+                    <img className="roster-avatar" src={getAvatarAssetPath(player.avatarId)} alt="" onError={(e) => handleAvatarError(e, player.avatarId)} />
+                    <div className="roster-info">
+                      <strong>{player.username}{player.userId === props.currentUserId ? " (you)" : ""}</strong>
+                      <span className="muted">{character?.name ?? "Choosing…"}</span>
+                    </div>
+                    <span className={`roster-badge ${player.ready ? "ready" : ""}`}>{player.ready ? "Ready" : "Not ready"}</span>
                   </div>
-                  <strong>{card.name}</strong>
-                  <span className="hand-card-desc">{card.description}</span>
-                  <div className="row">
-                    {card.type === "unit" ? (
-                      <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId)}>
-                        <img className="button-icon" src={getIconAssetPath("icon-unit")} alt="" aria-hidden="true" />
-                        Play Unit
-                      </button>
-                    ) : null}
-                    {card.type === "spell" && possibleTargets.length <= 1 ? (
-                      <button
-                        className="button hand-play-btn"
-                        type="button"
-                        disabled={!playable}
-                        onClick={() => onPlayCard(card.instanceId, possibleTargets[0]?.userId)}
-                      >
-                        <img className="button-icon" src={getIconAssetPath("icon-spell")} alt="" aria-hidden="true" />
-                        {possibleTargets[0] ? `Cast on ${possibleTargets[0].username}` : "Cast Spell"}
-                      </button>
-                    ) : null}
-                    {card.type === "spell" && possibleTargets.length > 1
-                      ? possibleTargets.map((target) => (
-                          <button
-                            key={`${card.instanceId}-${target.userId}`}
-                            className="button hand-play-btn"
-                            type="button"
-                            disabled={!playable}
-                            onClick={() => onPlayCard(card.instanceId, target.userId)}
-                          >
-                            <img className="button-icon" src={getIconAssetPath("icon-attack")} alt="" aria-hidden="true" />
-                            Cast on {target.username}
-                          </button>
-                        ))
-                      : null}
-                  </div>
-                  {reason ? <small className="hand-reason">{reason}</small> : null}
-                </article>
                 );
               })}
             </div>
-          </aside>
-
-          <div
-            className={`tabletop-surface anim-${animationPreset} ${turnShift ? "turn-shift" : ""} ${
-              roomAction ? `action-${roomAction.actionType.replace("_", "-")}` : ""
-            }`}
-          >
-          <div className="turn-path-layer" aria-hidden="true">
-            {seatPositions.map((position, index) => (
-              <span key={`path-${position}`} className={`turn-path path-${position} ${activeSeatIndex === index ? "active" : ""}`} />
-            ))}
-            {activeSeatIndex >= 0 ? <span className={`turn-glow glow-${seatPositions[activeSeatIndex]}`} /> : null}
+            <div className="duel-controls">
+              {isInRoom ? (
+                <button className="button primary lobby-cta" type="button" onClick={onToggleReady}>{meReady ? "Unready" : "Ready Up"}</button>
+              ) : (
+                <button className="button primary lobby-cta" type="button" onClick={onJoinAsHostPlayer}>Join as Player</button>
+              )}
+              {isRoomHost ? <button className="button lobby-cta" type="button" onClick={onStartRoom}>Start Duel</button> : null}
+              <button className="button lobby-leave" type="button" onClick={onLeaveRoom}>Leave Room</button>
+            </div>
           </div>
+        ) : (
+          <>
+            {attacker ? (
+              <div className="attack-hint-bar">
+                <span>Attacking with <strong>{attacker.name}</strong> — tap an enemy player or unit.</span>
+                <button className="button button-secondary" type="button" onClick={() => setSelectedBoardCardId(null)}>Cancel</button>
+              </div>
+            ) : null}
 
-          <div className="rift-board-frame">
-            <div className="table-deck-stack deck-stack-top" aria-hidden="true">
-              <img className="deck-back-art" src={CARD_BACK_ASSET_PATH} alt="" />
-              <span>Enemy Deck</span>
-            </div>
-            <div className="table-deck-stack deck-stack-bottom" aria-hidden="true">
-              <img className="deck-back-art" src={DECK_BACK_ASSET_PATH} alt="" />
-              <span>Your Deck</span>
-            </div>
-            <div className="table-resource-cluster resource-cluster-top" aria-hidden="true">
-              <div className="resource-chip">
-                <img className="status-icon" src={getIconAssetPath("icon-room")} alt="" />
-                <strong>{boardTopSummary?.deckCount ?? 0}</strong>
-                <span>Deck</span>
-              </div>
-              <div className="resource-chip">
-                <img className="status-icon" src={getIconAssetPath("icon-mana")} alt="" />
-                <strong>{boardTopSummary ? `${boardTopSummary.mana}/${boardTopSummary.maxMana}` : "--"}</strong>
-                <span>Mana</span>
-              </div>
-            </div>
-            <div className="table-resource-cluster resource-cluster-bottom" aria-hidden="true">
-              <div className="resource-chip">
-                <img className="status-icon" src={getIconAssetPath("icon-room")} alt="" />
-                <strong>{me?.deckCount ?? 0}</strong>
-                <span>Deck</span>
-              </div>
-              <div className="resource-chip">
-                <img className="status-icon" src={getIconAssetPath("icon-mana")} alt="" />
-                <strong>{me ? `${me.mana}/${me.maxMana}` : "--"}</strong>
-                <span>Mana</span>
-              </div>
-            </div>
-            {roomAction ? (
-              <div
-                className={`table-travel-card action-${roomAction.actionType.replace("_", "-")} from-${actorSeatPosition} ${actionDestinationClass}`}
-                aria-hidden="true"
-              >
-                {roomAction.card ? (
-                  <img src={getCardArtSources(roomAction.card.slug).primary} alt="" onError={(event) => handleCardArtError(event, roomAction.card!.slug)} />
-                ) : (
-                  <div className="table-travel-turn-mark">End</div>
-                )}
-              </div>
-            ) : null}
-            {roomAction?.actionType === "draw" && roomAction.card ? (
-              <div className={`draw-trail ${actorIsMe ? "draw-trail-self" : "draw-trail-opponent"}`} aria-hidden="true" />
-            ) : null}
-            {(roomAction?.actionType === "play" || roomAction?.actionType === "attack") && roomAction.card && targetSeatPosition ? (
-              <div className={`target-beam beam-to-${targetSeatPosition}`} aria-hidden="true" />
-            ) : null}
-            {selectedOwnBoardCard && hoveredTargetSeatPosition ? (
-              <div className={`target-beam preview-beam beam-to-${hoveredTargetSeatPosition}`} aria-hidden="true" />
-            ) : null}
-            <div className="battle-lane battle-lane-top">
-              {opponents.length === 0 ? <p className="muted">Opponent field will appear here.</p> : null}
-              {opponents.map((player) => (
-                <section
-                  key={player.userId}
-                  className={`lane-player lane-player-opponent ${hoveredTargetPlayerId === player.userId ? "lane-targeted" : ""} ${roomAction?.actionType === "attack" && roomAction.targetUserId === player.userId ? "lane-under-attack" : ""}`}
-                  onMouseEnter={() => setHoveredTargetPlayerId(player.userId)}
-                  onMouseLeave={() => setHoveredTargetPlayerId((current) => (current === player.userId ? null : current))}
-                >
-                  <header className="lane-player-head">
-                    <strong>{player.username}</strong>
-                    <span>
-                      Mana {player.mana}/{player.maxMana}
-                    </span>
-                  </header>
-                  <div className="field-label">Enemy Field</div>
-                  <div className="lane-slots" aria-hidden="true">
-                    {Array.from({ length: 5 }, (_, slotIndex) => (
-                      <span key={`${player.userId}-slot-${slotIndex}`} className="lane-slot" />
-                    ))}
-                  </div>
-                  <div className="lane-card-row">
-                    {defeatedSignals
-                      .filter((signal) => signal.playerUserId === player.userId)
-                      .map((signal) => (
-                        <div key={signal.id} className="defeated-card-signal">
-                          {signal.cardName} defeated
-                        </div>
-                      ))}
-                    {player.board.length === 0 ? <span className="lane-empty">No cards in play</span> : null}
-                    {player.board.slice(0, 4).map((card) => (
-                      <article
-                        key={`${player.userId}-${card.instanceId}`}
-                        className={`board-card board-card-opponent ${selectedBoardCardId === card.instanceId ? "board-card-selected" : ""}`}
-                        onClick={() => setSelectedBoardCardId((current) => (current === card.instanceId ? null : card.instanceId))}
-                      >
-                        <img src={getCardArtSources(card.slug).primary} alt={card.name} onError={(event) => handleCardArtError(event, card.slug)} />
-                        {card.canAttack ? <small className="board-card-ready board-card-ready-opponent">Ready</small> : null}
-                        <span>{card.attack}/{card.health}</span>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-            <div className="tabletop-core">
-              <p className="muted">Chronicles Table</p>
-              <strong>{activePlayerName ? `Active: ${activePlayerName}` : "Waiting to Start"}</strong>
-              <span className="muted">{currentRoom?.status === "in_game" ? "Battle in progress" : "Lobby setup phase"}</span>
-            </div>
-            <div className={`table-action-card ${roomAction ? "visible" : ""} ${roomAction ? `table-action-${roomAction.actionType.replace("_", "-")}` : ""}`}>
-              {roomAction?.card ? (
-                <>
-                  <img src={getCardArtSources(roomAction.card.slug).primary} alt={roomAction.card.name} onError={(event) => handleCardArtError(event, roomAction.card!.slug)} />
-                  <div className="table-action-copy">
-                    <strong>{roomAction.card.name}</strong>
-                    <span>
-                      {roomAction.actionType === "draw"
-                        ? `${roomAction.actorUsername} drew this card`
-                        : roomAction.actionType === "attack"
-                          ? `${roomAction.actorUsername} attacked ${roomAction.targetCardName ?? targetPlayer?.username ?? "a target"}`
-                          : `${roomAction.actorUsername} used this card`}
-                    </span>
-                    <p>{roomAction.actionType === "attack" ? `${roomAction.amount ?? roomAction.card.attack} damage dealt.` : roomAction.card.description}</p>
-                    {roomAction.targetCardName ? <small>Target unit: {roomAction.targetCardName}</small> : targetPlayer ? <small>Targeting {targetPlayer.username}</small> : null}
-                  </div>
-                </>
-              ) : roomAction ? (
-                <div className="table-action-copy">
-                  <strong>Turn End</strong>
-                  <span>{roomAction.actorUsername} ended the turn</span>
-                </div>
-              ) : null}
-            </div>
-            <div className="battle-lane battle-lane-bottom">
-              <section className="lane-player lane-player-self">
-                <header className="lane-player-head">
-                  <strong>{me?.username ?? "You"}</strong>
-                  <span>
-                    Mana {me ? `${me.mana}/${me.maxMana}` : "--"}
-                  </span>
-                </header>
-                <div className="field-label">Your Field</div>
-                <div className="lane-slots" aria-hidden="true">
-                  {Array.from({ length: 5 }, (_, slotIndex) => (
-                    <span key={`self-slot-${slotIndex}`} className="lane-slot" />
-                  ))}
-                </div>
-                <div className="lane-card-row">
-                  {defeatedSignals
-                    .filter((signal) => signal.playerUserId === me?.userId)
-                    .map((signal) => (
-                      <div key={signal.id} className="defeated-card-signal">
-                        {signal.cardName} defeated
+            <div className="opp-row">
+              {opponents.length === 0 ? <p className="muted">Waiting for opponents…</p> : null}
+              {opponents.map((player) => {
+                const character = CHARACTER_CLASSES.find((c) => c.id === player.characterId);
+                const targetable = Boolean(attacker) && player.health > 0;
+                const isTurn = player.userId === activePlayerId;
+                return (
+                  <div key={player.userId} className={`opp-card ${isTurn ? "opp-turn" : ""} ${targetable ? "opp-targetable" : ""}`}>
+                    <div className="opp-head" onClick={() => strikePlayer(player.userId, player.health)}>
+                      <img className="opp-avatar" src={getAvatarAssetPath(player.avatarId)} alt="" onError={(e) => handleAvatarError(e, player.avatarId)} />
+                      <div className="opp-meta">
+                        <strong>{player.username}</strong>
+                        <span className="muted">{character?.name ?? ""}</span>
                       </div>
-                    ))}
-                  {me?.board.length ? null : <span className="lane-empty">Play units and spells to build your field.</span>}
-                  {me?.board.slice(0, 5).map((card) => (
-                      <article
-                        key={card.instanceId}
-                        className={`board-card ${selectedBoardCardId === card.instanceId ? "board-card-selected" : ""}`}
-                        onClick={() => setSelectedBoardCardId((current) => (current === card.instanceId ? null : card.instanceId))}
-                      >
-                      <img src={getCardArtSources(card.slug).primary} alt={card.name} onError={(event) => handleCardArtError(event, card.slug)} />
-                      {card.canAttack ? <small className="board-card-ready">Ready</small> : null}
-                      <span>{card.attack}/{card.health}</span>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            </div>
-            <div className="table-feed">
-              <span className="table-feed-label">Latest Table Action</span>
-              <strong>{latestActionLabel}</strong>
-              {targetPlayer ? <span className="muted">Target: {targetPlayer.username}</span> : null}
-            </div>
-          </div>
-
-          {Array.from({ length: currentRoom?.maxPlayers ?? 6 }, (_, index) => {
-            const player = currentRoom?.players[index];
-            const playerCharacter = CHARACTER_CLASSES.find((entry) => entry.id === player?.characterId);
-            const isActive = activePlayerId && player?.userId === activePlayerId;
-            return (
-              <article
-                key={`seat-${index}`}
-                className={`table-seat ${player?.ready ? "ready" : ""} ${isActive ? "active-turn" : ""}`}
-                style={seatLayouts[index]}
-                onMouseMove={onTilt}
-                onMouseLeave={onTiltReset}
-              >
-                <p>Seat {index + 1}</p>
-                {player ? (
-                  <div className="seat-head">
-                    <img
-                      className="seat-avatar"
-                      src={getAvatarAssetPath(player.avatarId)}
-                      alt={player.username}
-                      onError={(event) => handleAvatarError(event, player.avatarId)}
-                    />
-                    <strong>{player.username}</strong>
-                  </div>
-                ) : (
-                  <strong>Open Slot</strong>
-                )}
-                {player && playerCharacter ? (
-                  <div className="seat-character">
-                    <img src={playerCharacter.sprite} alt={playerCharacter.name} loading="lazy" />
-                    <div className="seat-character-text">
-                      <strong>
-                        <img className="crest-icon crest-inline" src={playerCharacter.crest} alt="" aria-hidden="true" />
-                        {playerCharacter.name}
-                      </strong>
-                      <span>{playerCharacter.tag}</span>
+                      <span className="opp-hp">❤ {player.health}</span>
+                    </div>
+                    <div className="opp-substats">
+                      <span>◆ {player.mana}/{player.maxMana}</span>
+                      <span>🃏 {player.handCount}</span>
+                      <span>▦ {player.deckCount}</span>
+                    </div>
+                    <div className="opp-units">
+                      {player.board.length === 0 ? <span className="opp-empty">No units</span> : null}
+                      {player.board.map((unit) => (
+                        <button
+                          key={unit.instanceId}
+                          className={`mini-unit ${attacker ? "mini-targetable" : ""}`}
+                          type="button"
+                          disabled={!attacker}
+                          onClick={() => strikeUnit(player.userId, unit.instanceId)}
+                          title={unit.name}
+                        >
+                          <span className="mini-name">{unit.name}</span>
+                          <span className="mini-stats">⚔{unit.attack} ❤{unit.health}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                ) : (
-                  <span>{player ? player.characterId : "Waiting"}</span>
-                )}
-                <span>Cards: {player ? player.handCount : 0} | Deck: {player ? player.deckCount : 0}</span>
-                <span>
-                  Mana: {player ? player.mana : 0}/{player ? player.maxMana : 0}
-                </span>
-              </article>
-            );
-          })}
-          </div>
+                );
+              })}
+            </div>
 
-          <aside className="side-panel status-panel">
-            <div className="side-panel-head">
-              <strong>Battle Status</strong>
-              <span className="muted">{currentRoom?.players.length ?? 0} players</span>
-            </div>
-            <div className="panel-stat-grid">
-              <div className="panel-stat">
-                <span>Turn</span>
-                <strong>{battle?.turn ?? activeMatchState?.turn ?? "--"}</strong>
+            <div className="your-field">
+              <header className="field-head">
+                <strong>Your Field</strong>
+                <span className="muted">{me?.board.length ?? 0} unit(s){isMyTurn ? " · tap a unit to attack" : ""}</span>
+              </header>
+              <div className="field-units">
+                {(me?.board.length ?? 0) === 0 ? <p className="muted">Play units from your hand to fill your field.</p> : null}
+                {me?.board.map((unit) => {
+                  const canAct = isMyTurn && unit.canAttack;
+                  const selected = unit.instanceId === selectedBoardCardId;
+                  return (
+                    <button
+                      key={unit.instanceId}
+                      className={`field-unit ${selected ? "field-selected" : ""} ${canAct ? "field-canact" : ""}`}
+                      type="button"
+                      onClick={() => setSelectedBoardCardId(selected ? null : canAct ? unit.instanceId : null)}
+                      disabled={!canAct}
+                      onMouseMove={onTilt}
+                      onMouseLeave={onTiltReset}
+                    >
+                      <img className="field-unit-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
+                      <span className="field-unit-name">{unit.name}</span>
+                      <span className="field-unit-stats">⚔ {unit.attack} &nbsp; ❤ {unit.health}</span>
+                      <span className={`field-unit-flag ${canAct ? "ready" : ""}`}>{canAct ? "Ready" : "Resting"}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <div className="panel-stat">
-                <span>Timer</span>
-                <strong>{formatTimer(timer)}</strong>
-              </div>
-              <div className="panel-stat">
-                <span>Action</span>
-                <strong>{roomAction ? roomAction.actionType.replace("_", " ") : "live"}</strong>
-              </div>
             </div>
-            <div className="status-list">
-              <article className="how-to-panel">
-                <strong>How This Turn Works</strong>
-                <ol className="how-to-list">
-                  <li>Your draw happens automatically at the start of your turn.</li>
-                  <li><strong>Play Unit</strong> puts that card onto your board.</li>
-                  <li><strong>Use Spell</strong> triggers the effect immediately on the shown target.</li>
-                  <li>Watch mana before using a card.</li>
-                  <li>When you are done, click <strong>End Turn</strong>.</li>
-                </ol>
-                <small className="muted">
-                  Units stay on the table. Spells resolve right away and usually do not stay in play.
-                </small>
-              </article>
-              {(currentRoom?.players ?? []).map((player) => (
-                <article key={player.userId} className={`status-card ${player.userId === activePlayerId ? "status-active" : ""}`}>
-                  <div className="seat-head">
-                    <img
-                      className="seat-avatar"
-                      src={getAvatarAssetPath(player.avatarId)}
-                      alt={player.username}
-                      onError={(event) => handleAvatarError(event, player.avatarId)}
-                    />
-                    <strong>{player.username}</strong>
-                  </div>
-                  <div className="status-meta">
-                    <span className="status-pill">
-                      <img className="status-icon" src={getIconAssetPath("icon-health")} alt="" aria-hidden="true" />
-                      HP {player.health}
-                    </span>
-                    <span className="status-pill">
-                      <img className="status-icon" src={getIconAssetPath("icon-mana")} alt="" aria-hidden="true" />
-                      Mana {player.mana}/{player.maxMana}
-                    </span>
-                    <span className="status-pill">
-                      <img className="status-icon" src={getIconAssetPath("icon-unit")} alt="" aria-hidden="true" />
-                      Hand {player.handCount}
-                    </span>
-                    <span className="status-pill">
-                      <img className="status-icon" src={getIconAssetPath("icon-room")} alt="" aria-hidden="true" />
-                      Deck {player.deckCount}
-                    </span>
-                    <span className="status-pill">
-                      <img className="status-icon" src={getIconAssetPath("icon-spell")} alt="" aria-hidden="true" />
-                      Board {player.board.length}
-                    </span>
-                  </div>
-                </article>
-              ))}
-            </div>
-            {selectedAnyBoardCard ? (
-              <article className="inspect-card">
-                <strong>{selectedOwnBoardCard ? "Selected Card" : "Target Card"}</strong>
-                <img
-                  className="inspect-card-art"
-                  src={getCardArtSources(selectedAnyBoardCard.slug).primary}
-                  alt={selectedAnyBoardCard.name}
-                  onError={(event) => handleCardArtError(event, selectedAnyBoardCard.slug)}
-                />
-                <strong>{selectedAnyBoardCard.name}</strong>
-                <span>{selectedAnyBoardCard.description}</span>
-                <div className="status-meta">
-                  <span className="status-pill">ATK {selectedAnyBoardCard.attack}</span>
-                  <span className="status-pill">HP {selectedAnyBoardCard.health}</span>
-                  <span className="status-pill">Cost {selectedAnyBoardCard.cost}</span>
-                  <span className="status-pill">{selectedAnyBoardCard.canAttack ? "Can Attack" : "Waiting"}</span>
-                </div>
-                <small className="muted">
-                  {selectedOwnBoardCard
-                    ? hoveredTargetPlayer
-                      ? `Preview targeting ${hoveredTargetPlayer.username}`
-                      : "Select an enemy lane or enemy unit to preview combat."
-                    : "This is an enemy unit on the board."}
-                </small>
-                {battle?.activePlayerId === props.currentUserId && selectedOwnBoardCard?.canAttack ? (
-                  <div className="action-stack">
-                    <small className="muted action-helper">Attack controls for this unit:</small>
-                    {opponents.filter((player) => player.health > 0).map((target) => (
-                      <div key={`attack-group-${selectedOwnBoardCard!.instanceId}-${target.userId}`} className="attack-option-group">
-                        <button
-                          className="button"
-                          type="button"
-                          onClick={() => onAttackPlayer(selectedOwnBoardCard!.instanceId, target.userId)}
-                        >
-                          <img className="button-icon" src={getIconAssetPath("icon-attack")} alt="" aria-hidden="true" />
-                          Attack {target.username} Directly
-                        </button>
-                        {target.board.slice(0, 5).map((enemyCard) => (
-                          <button
-                            key={`attack-${selectedOwnBoardCard!.instanceId}-${enemyCard.instanceId}`}
-                            className="button button-secondary"
-                            type="button"
-                            onClick={() => onAttackPlayer(selectedOwnBoardCard!.instanceId, target.userId, enemyCard.instanceId)}
-                          >
-                            <img className="button-icon" src={getIconAssetPath("icon-attack")} alt="" aria-hidden="true" />
-                            Attack {enemyCard.name}
-                          </button>
-                        ))}
+
+            <div className="your-hand">
+              <header className="field-head">
+                <strong>Your Hand</strong>
+                <span className="muted">{privateHand.length} card(s) · ◆ {me ? `${me.mana}/${me.maxMana}` : "--"}</span>
+              </header>
+              <div className="hand-row">
+                {privateHand.length === 0 ? <p className="muted">No cards in hand.</p> : null}
+                {privateHand.map((card) => {
+                  const art = getCardArtSources(card.slug);
+                  const affordable = (me?.mana ?? 0) >= card.cost;
+                  const playable = isMyTurn && affordable;
+                  const reason = !isMyTurn ? "Wait for your turn" : !affordable ? `Needs ${card.cost} mana` : "";
+                  return (
+                    <article key={card.instanceId} className={`hand-card ${!affordable ? "hand-unaffordable" : ""} ${playable ? "hand-playable" : ""}`}>
+                      <div className="hand-card-media">
+                        <img className="hand-card-art" src={art.primary} alt={card.name} loading="lazy" onError={(e) => handleCardArtError(e, card.slug)} />
+                        <span className={`hand-cost ${affordable ? "" : "hand-cost-short"}`} title="Mana cost">{card.cost}</span>
+                        {card.type === "unit" ? (
+                          <span className="hand-unit-stats">⚔ {card.attack} &nbsp; ❤ {card.health}</span>
+                        ) : (
+                          <span className="hand-type-tag">Spell</span>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                ) : null}
-              </article>
-            ) : null}
-            <article className="history-panel">
-              <strong>Battle History</strong>
-              <div className="history-list">
-                {actionHistory.length === 0 ? <span className="muted">Recent turns and card plays will appear here.</span> : null}
-                {actionHistory.map((entry, index) => (
-                  <div key={`${entry.timestamp}-${index}`} className="history-item">
-                    <strong>{entry.actorUsername}</strong>
-                    <span>
-                      {entry.actionType === "draw"
-                        ? `drew ${entry.card?.name ?? "a card"}`
-                        : entry.actionType === "play"
-                          ? `used ${entry.card?.name ?? "a card"}`
-                          : entry.actionType === "attack"
-                            ? `attacked ${entry.targetCardName ?? (entry.targetUserId ? currentRoom?.players.find((player) => player.userId === entry.targetUserId)?.username ?? "a player" : "a player")} with ${entry.card?.name ?? "a unit"}`
-                          : "ended the turn"}
-                    </span>
-                    {entry.actionType === "attack"
-                      ? <small>{entry.amount ?? entry.card?.attack ?? 0} damage dealt.</small>
-                      : entry.card?.description
-                        ? <small>{entry.card.description}</small>
-                        : null}
-                  </div>
-                ))}
+                      <strong>{card.name}</strong>
+                      <span className="hand-card-desc">{card.description}</span>
+                      <div className="row">
+                        {card.type === "unit" ? (
+                          <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId)}>Play Unit</button>
+                        ) : possibleTargets.length <= 1 ? (
+                          <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId, possibleTargets[0]?.userId)}>
+                            {possibleTargets[0] ? `Cast on ${possibleTargets[0].username}` : "Cast"}
+                          </button>
+                        ) : (
+                          possibleTargets.map((target) => (
+                            <button key={`${card.instanceId}-${target.userId}`} className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId, target.userId)}>
+                              Cast on {target.username}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      {reason ? <small className="hand-reason">{reason}</small> : null}
+                    </article>
+                  );
+                })}
               </div>
-            </article>
-          </aside>
-        </div>
+            </div>
 
-        <div className="row">
-          {currentRoom?.status === "open" ? (
-            <>
-              {isInRoom ? (
-                <button className="button primary" type="button" onClick={onToggleReady}>
-                  <img className="button-icon" src={getIconAssetPath("icon-shield")} alt="" aria-hidden="true" />
-                  {meReady ? "Unready" : "Ready"}
-                </button>
-              ) : (
-                <button className="button primary" type="button" onClick={onJoinAsHostPlayer}>
-                  <img className="button-icon" src={getIconAssetPath("icon-host")} alt="" aria-hidden="true" />
-                  Join as Player
-                </button>
-              )}
-              <button className="button" type="button" onClick={onStartRoom} disabled={!isRoomHost}>
-                <img className="button-icon" src={getIconAssetPath("icon-host")} alt="" aria-hidden="true" />
-                Start Room (Host)
-              </button>
-              <button className="button" type="button" onClick={onLeaveRoom}>
-                <img className="button-icon" src={getIconAssetPath("icon-logout")} alt="" aria-hidden="true" />
-                Leave Room
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="button primary" type="button" onClick={onEndTurn}>
-                <img className="button-icon" src={getIconAssetPath("icon-timer")} alt="" aria-hidden="true" />
-                End Turn
-              </button>
-              <span className="muted">Cards draw automatically at turn start or through card effects.</span>
-            </>
-          )}
-          <button className="button" type="button" onClick={onConcede} disabled={!activeMatchState?.matchId}>
-            <img className="button-icon" src={getIconAssetPath("icon-attack")} alt="" aria-hidden="true" />
-            Concede 1v1 Match
-          </button>
-        </div>
-
+            <div className="duel-controls">
+              <button className="button primary lobby-cta" type="button" onClick={onEndTurn} disabled={!isMyTurn}>End Turn</button>
+              <button className="button" type="button" onClick={onConcede} disabled={!activeMatchState?.matchId}>Concede</button>
+              <button className="button lobby-leave" type="button" onClick={onLeaveRoom}>Leave</button>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );
