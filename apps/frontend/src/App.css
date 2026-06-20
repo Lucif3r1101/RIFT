@@ -4873,9 +4873,59 @@ body {
   place-items: center;
   pointer-events: none;
 }
+/* Attacker -> target beam + caption */
+.attack-beam-layer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 60;
+}
+.attack-beam {
+  stroke: #ff5d3a;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(255, 93, 58, 0.9));
+  stroke-dasharray: 10 8;
+  animation: beamDash 0.9s linear forwards, beamFade 0.9s ease-out forwards;
+}
+.attack-beam-arrow { fill: #ff5d3a; filter: drop-shadow(0 0 6px rgba(255, 93, 58, 0.9)); }
+@keyframes beamDash { to { stroke-dashoffset: -54; } }
+@keyframes beamFade {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  72% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.attack-info {
+  position: absolute;
+  top: -6%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  font-size: clamp(0.95rem, 2.4vw, 1.3rem);
+  color: #fff;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(18, 8, 6, 0.82);
+  border: 1px solid rgba(255, 93, 58, 0.55);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+  animation: attackInfoPop 1.4s ease-out forwards;
+}
+.attack-info strong { color: #ffb199; }
+@keyframes attackInfoPop {
+  0% { transform: translateX(-50%) translateY(8px) scale(0.85); opacity: 0; }
+  15% { transform: translateX(-50%) translateY(0) scale(1.05); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-6px) scale(1); opacity: 0; }
+}
 .float-dmg {
   position: absolute;
   font-family: "Rajdhani", sans-serif;
+  font-weight: 800;
   font-weight: 800;
   font-size: clamp(2.2rem, 7vw, 4rem);
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);

@@ -360,6 +360,8 @@ function TabletopBoard(props: GameBoardProps) {
   const [lungeId, setLungeId] = useState<string | null>(null);
   const [flipId, setFlipId] = useState<string | null>(null);
   const [turnBanner, setTurnBanner] = useState<{ text: string; mine: boolean } | null>(null);
+  const [attackLine, setAttackLine] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const [attackInfo, setAttackInfo] = useState<{ attacker: string; target: string } | null>(null);
   const lastActiveRef = useRef<string | null>(null);
   const [showCoach, setShowCoach] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -543,10 +545,26 @@ function TabletopBoard(props: GameBoardProps) {
   const ZONES = 5;
   const enemyZoneCount = Math.max(ZONES, enemyUnits.length);
   const myZoneCount = Math.max(ZONES, me?.board.length ?? 0);
-  const fireFx = (id: string, kind: "slash" | "shield") => {
+  // Draw a glowing beam from the attacking card to whatever it's striking, so
+  // it's always clear which unit is hitting which target.
+  const drawAttackLine = (attackerId: string, targetSelector: string) => {
+    if (typeof document === "undefined") return;
+    const a = document.querySelector(`[data-cardid="${attackerId}"]`)?.getBoundingClientRect();
+    const t = document.querySelector(targetSelector)?.getBoundingClientRect();
+    if (!a || !t) return;
+    setAttackLine({
+      x1: a.left + a.width / 2,
+      y1: a.top + a.height / 2,
+      x2: t.left + t.width / 2,
+      y2: t.top + t.height / 2
+    });
+    window.setTimeout(() => setAttackLine(null), 900);
+  };
+  const fireFx = (id: string, kind: "slash" | "shield", targetSelector: string) => {
     if (attacker) {
       setLungeId(attacker.instanceId);
       window.setTimeout(() => setLungeId(null), 360);
+      drawAttackLine(attacker.instanceId, targetSelector);
     }
     // FX lands a beat after the lunge connects
     window.setTimeout(() => setFx({ id, kind }), 240);
@@ -556,7 +574,10 @@ function TabletopBoard(props: GameBoardProps) {
   };
   const strikePlayer = (targetUserId: string, health: number) => {
     if (attacker && health > 0) {
-      fireFx(`player-${targetUserId}`, "slash");
+      const target = opponents.find((p) => p.userId === targetUserId);
+      setAttackInfo({ attacker: attacker.name, target: target?.username ?? "the enemy" });
+      window.setTimeout(() => setAttackInfo(null), 1400);
+      fireFx(`player-${targetUserId}`, "slash", `[data-plateid="${targetUserId}"]`);
       onAttackPlayer(attacker.instanceId, targetUserId);
       setSelectedBoardCardId(null);
     }
@@ -566,7 +587,9 @@ function TabletopBoard(props: GameBoardProps) {
     const targetUnit = opponents.find((p) => p.userId === targetUserId)?.board.find((c) => c.instanceId === unitId);
     // Shield clang if the wall holds (defense DEF >= our ATK); otherwise a slash.
     const blocked = targetUnit?.position === "defense" && targetUnit.health >= attacker.attack;
-    fireFx(unitId, blocked ? "shield" : "slash");
+    setAttackInfo({ attacker: attacker.name, target: targetUnit?.name ?? "a unit" });
+    window.setTimeout(() => setAttackInfo(null), 1400);
+    fireFx(unitId, blocked ? "shield" : "slash", `[data-cardid="${unitId}"]`);
     onAttackPlayer(attacker.instanceId, targetUserId, unitId);
     setSelectedBoardCardId(null);
   };
@@ -580,6 +603,23 @@ function TabletopBoard(props: GameBoardProps) {
 
   return (
     <div className="grid">
+      {attackLine ? (
+        <svg className="attack-beam-layer" aria-hidden="true">
+          <defs>
+            <marker id="atk-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" className="attack-beam-arrow" />
+            </marker>
+          </defs>
+          <line
+            x1={attackLine.x1}
+            y1={attackLine.y1}
+            x2={attackLine.x2}
+            y2={attackLine.y2}
+            className="attack-beam"
+            markerEnd="url(#atk-arrow)"
+          />
+        </svg>
+      ) : null}
       {winnerId ? (
         <Suspense fallback={null}>
           <VictoryOverlay won={iWon} winnerName={winnerName} onExit={props.onLeaveRoom} />
@@ -718,6 +758,7 @@ function TabletopBoard(props: GameBoardProps) {
                 return (
                   <div key={player.userId} className="plate-wrap">
                     <button
+                      data-plateid={player.userId}
                       className={`plate ${isTurn ? "plate-turn" : ""} ${targetable ? "plate-target" : ""} ${fx?.id === `player-${player.userId}` ? "fx-slash" : ""}`}
                       type="button"
                       disabled={!targetable}
@@ -745,6 +786,9 @@ function TabletopBoard(props: GameBoardProps) {
 
             <div className={`battlefield ${attacker ? "bf-attacking" : ""} ${shake ? "bf-shake" : ""} ${isMyTurn ? "bf-myturn" : ""}`}>
               <div className="bf-center-fx" aria-hidden="true">
+                {attackInfo ? (
+                  <span className="attack-info">⚔ <strong>{attackInfo.attacker}</strong> attacks <strong>{attackInfo.target}</strong></span>
+                ) : null}
                 {floatDmg.map((d) => (
                   <span key={d.id} className={`float-dmg ${d.mine ? "dmg-self" : "dmg-enemy"}`}>-{d.amount}</span>
                 ))}
@@ -770,6 +814,7 @@ function TabletopBoard(props: GameBoardProps) {
                       return (
                         <div key={unit.instanceId} className="bf-zone">
                           <button
+                            data-cardid={unit.instanceId}
                             className={`tcg-card tcg-enemy rarity-${unit.rarity} ${faceDown ? "tcg-facedown" : "stance-attack"} ${attacker ? "tcg-target" : ""} ${fxClass}`}
                             type="button"
                             disabled={!attacker}
@@ -816,6 +861,7 @@ function TabletopBoard(props: GameBoardProps) {
                       return (
                         <div key={unit.instanceId} className="bf-zone tcg-slot">
                           <div
+                            data-cardid={unit.instanceId}
                             className={`tcg-card tcg-mine rarity-${unit.rarity} ${inDef ? "tcg-defense stance-defense" : "stance-attack"} ${selected ? "tcg-selected" : ""} ${canAct ? "tcg-canact" : ""} ${fxClass} ${unit.instanceId === lungeId ? "tcg-lunge" : ""} ${unit.instanceId === flipId ? "tcg-flip" : ""}`}
                             role="button"
                             tabIndex={0}
