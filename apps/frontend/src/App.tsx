@@ -1,6 +1,5 @@
 import { FormEvent, MouseEvent as ReactMouseEvent, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { track } from "@vercel/analytics";
 import "./App.css";
 import { AuthPanel } from "./components/AuthPanel";
 import { GameBoard } from "./components/GameBoard";
@@ -86,17 +85,6 @@ export function App() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [practiceMode, setPracticeMode] = useState(false);
-  // Remember which finished match we've already reported, so duel_finished
-  // fires exactly once per game (room_state arrives many times).
-  const reportedWinnerRoomRef = useRef<string | null>(null);
-  useEffect(() => {
-    const winnerId = currentRoom?.battle?.winnerId;
-    if (!currentRoom || !winnerId) return;
-    const key = `${currentRoom.roomCode}:${winnerId}`;
-    if (reportedWinnerRoomRef.current === key) return;
-    reportedWinnerRoomRef.current = key;
-    track("duel_finished", { players: currentRoom.players.length });
-  }, [currentRoom]);
   const [guideSection, setGuideSection] = useState<GuideSection>("lore");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [impact, setImpact] = useState(false);
@@ -294,8 +282,6 @@ export function App() {
     socket.on("room_created", (payload: { roomCode: string }) => {
       setRoomCodeInput(payload.roomCode);
       pushToast(`Room created: ${payload.roomCode}`, "success");
-      // Analytics: a player started a lobby.
-      track("lobby_created");
     });
     socket.on("room_state", (payload: { room: RoomState }) => {
       setCurrentRoom(payload.room);
@@ -326,8 +312,6 @@ export function App() {
     socket.on("room_started", (payload: { roomCode: string; playerCount: number }) => {
       setTabletopMode(true);
       pushToast(`Room started (${payload.playerCount} players).`, "success");
-      // Analytics: a duel actually began (this is "played the game").
-      track("duel_started", { players: payload.playerCount });
     });
 
     return () => {
@@ -751,10 +735,7 @@ export function App() {
               onToggleReady={handleToggleReady}
               onStartRoom={handleStartRoom}
               onQueueJoin={handleQueueJoin}
-              onPractice={() => {
-                track("practice_started");
-                setPracticeMode(true);
-              }}
+              onPractice={() => setPracticeMode(true)}
               onEndTurn={() =>
                 currentRoom?.status === "in_game"
                   ? socketRef.current?.emit("room_end_turn", { roomCode: currentRoom.roomCode })
