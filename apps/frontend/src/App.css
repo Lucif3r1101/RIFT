@@ -4501,3 +4501,78 @@ body {
   font-family: "Rajdhani", sans-serif;
   font-size: 1.1rem;
 }
+
+/* ===== Combat FX + face-down ===== */
+.fx-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+/* Slash: a bright gash sweeps across + red flash */
+.fx-slash .fx-overlay::before {
+  content: "";
+  position: absolute;
+  top: 46%;
+  left: -30%;
+  width: 160%;
+  height: 6px;
+  background: linear-gradient(90deg, transparent, #ffffff, #ff4d6d, transparent);
+  box-shadow: 0 0 14px #ff4d6d;
+  transform: rotate(-32deg);
+  animation: slashSweep 0.5s ease-out forwards;
+}
+@keyframes slashSweep {
+  0% { transform: rotate(-32deg) translateX(-60%); opacity: 0; }
+  35% { opacity: 1; }
+  100% { transform: rotate(-32deg) translateX(60%); opacity: 0; }
+}
+.fx-slash { animation: hitFlash 0.5s ease-out; }
+@keyframes hitFlash {
+  0%, 100% { box-shadow: none; }
+  30% { box-shadow: 0 0 0 3px rgba(255, 77, 109, 0.85), 0 0 22px rgba(255, 77, 109, 0.6); }
+}
+
+/* Shield: a wall icon pops when an attack is blocked */
+.fx-shield .fx-overlay::before {
+  content: "🛡";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 2.2rem;
+  filter: drop-shadow(0 0 10px #8ce8ff);
+  animation: shieldPop 0.6s ease-out forwards;
+}
+@keyframes shieldPop {
+  0% { transform: scale(0.4); opacity: 0; }
+  40% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+.plate { position: relative; }
+
+.bf-shake { animation: bfShake 0.42s ease; }
+@keyframes bfShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+.hp-pop { display: inline-block; animation: hpPop 0.42s ease; }
+@keyframes hpPop {
+  0% { transform: scale(1.55); filter: brightness(1.7); }
+  100% { transform: scale(1); }
+}
+
+/* Opponent face-down (Set) card */
+.tcg-facedown .tcg-art { filter: brightness(0.85) saturate(0.8); }
+.tcg-facedown .tcg-name {
+  background: rgba(3, 6, 14, 0.9);
+  color: #8ce8ff;
+  letter-spacing: 0.2em;
+}

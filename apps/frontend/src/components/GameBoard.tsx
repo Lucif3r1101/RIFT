@@ -349,6 +349,8 @@ function TabletopBoard(props: GameBoardProps) {
   const [hoveredTargetPlayerId, setHoveredTargetPlayerId] = useState<string | null>(null);
   const [actionHistory, setActionHistory] = useState<RoomActionEvent[]>([]);
   const [defeatedSignals, setDefeatedSignals] = useState<DefeatedSignal[]>([]);
+  const [fx, setFx] = useState<{ id: string; kind: "slash" | "shield" } | null>(null);
+  const [shake, setShake] = useState(false);
   const [showCoach, setShowCoach] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("tcg-board-coach-v1") !== "seen";
@@ -491,17 +493,27 @@ function TabletopBoard(props: GameBoardProps) {
   const ZONES = 5;
   const enemyZoneCount = Math.max(ZONES, enemyUnits.length);
   const myZoneCount = Math.max(ZONES, me?.board.length ?? 0);
+  const fireFx = (id: string, kind: "slash" | "shield") => {
+    setFx({ id, kind });
+    setShake(true);
+    window.setTimeout(() => setFx(null), 650);
+    window.setTimeout(() => setShake(false), 420);
+  };
   const strikePlayer = (targetUserId: string, health: number) => {
     if (attacker && health > 0) {
+      fireFx(`player-${targetUserId}`, "slash");
       onAttackPlayer(attacker.instanceId, targetUserId);
       setSelectedBoardCardId(null);
     }
   };
   const strikeUnit = (targetUserId: string, unitId: string) => {
-    if (attacker) {
-      onAttackPlayer(attacker.instanceId, targetUserId, unitId);
-      setSelectedBoardCardId(null);
-    }
+    if (!attacker) return;
+    const targetUnit = opponents.find((p) => p.userId === targetUserId)?.board.find((c) => c.instanceId === unitId);
+    // Shield clang if the wall holds (defense DEF >= our ATK); otherwise a slash.
+    const blocked = targetUnit?.position === "defense" && targetUnit.health >= attacker.attack;
+    fireFx(unitId, blocked ? "shield" : "slash");
+    onAttackPlayer(attacker.instanceId, targetUserId, unitId);
+    setSelectedBoardCardId(null);
   };
   const inGame = currentRoom?.status === "in_game";
   const turnHeading = !inGame ? "Waiting to start" : isMyTurn ? "Your turn" : `${activePlayerName ?? "Opponent"}'s turn`;
@@ -546,8 +558,8 @@ function TabletopBoard(props: GameBoardProps) {
             </div>
           </div>
           <div className="bsb-stats">
-            <span className="bsb-stat bsb-hp">❤ {me?.health ?? "--"}</span>
-            <span className="bsb-stat bsb-mana">◆ {me ? `${me.mana}/${me.maxMana}` : "--"}</span>
+            <span key={`me-hp-${me?.health ?? 0}`} className="bsb-stat bsb-hp hp-pop">❤ {me?.health ?? "--"}</span>
+            <span key={`me-mana-${me?.mana ?? 0}`} className="bsb-stat bsb-mana hp-pop">◆ {me ? `${me.mana}/${me.maxMana}` : "--"}</span>
             <span className="bsb-stat bsb-timer">⏱ {formatTimer(timer)}</span>
             <span className="bsb-stat">Turn {battle?.turn ?? activeMatchState?.turn ?? "--"}</span>
             <span className="bsb-stat">Room {currentRoom?.roomCode ?? "--"}</span>
@@ -600,7 +612,7 @@ function TabletopBoard(props: GameBoardProps) {
                 return (
                   <button
                     key={player.userId}
-                    className={`plate ${isTurn ? "plate-turn" : ""} ${targetable ? "plate-target" : ""}`}
+                    className={`plate ${isTurn ? "plate-turn" : ""} ${targetable ? "plate-target" : ""} ${fx?.id === `player-${player.userId}` ? "fx-slash" : ""}`}
                     type="button"
                     disabled={!targetable}
                     onClick={() => strikePlayer(player.userId, player.health)}
@@ -608,13 +620,14 @@ function TabletopBoard(props: GameBoardProps) {
                   >
                     <img className="plate-avatar" src={getAvatarAssetPath(player.avatarId)} alt="" onError={(e) => handleAvatarError(e, player.avatarId)} />
                     <span className="plate-name">{player.username}</span>
-                    <span className="plate-stats"><b className="plate-hp">❤ {player.health}</b> ◆ {player.mana}/{player.maxMana}</span>
+                    <span className="plate-stats"><b key={`hp-${player.health}`} className="plate-hp hp-pop">❤ {player.health}</b> ◆ {player.mana}/{player.maxMana}</span>
+                    {fx?.id === `player-${player.userId}` ? <span className="fx-overlay" aria-hidden="true" /> : null}
                   </button>
                 );
               })}
             </div>
 
-            <div className={`battlefield ${attacker ? "bf-attacking" : ""}`}>
+            <div className={`battlefield ${attacker ? "bf-attacking" : ""} ${shake ? "bf-shake" : ""}`}>
               <div className="bf-plane">
                 <div className="bf-row bf-enemy">
                   <span className="bf-zone-label">Enemy Field {attacker ? "· tap a target" : ""}</span>
@@ -626,20 +639,33 @@ function TabletopBoard(props: GameBoardProps) {
                       }
                       const { owner, unit } = slot;
                       const inDef = unit.position === "defense";
+                      // Opponent's Set (defense) units are face-down: identity and
+                      // stats hidden until they are attacked/flipped.
+                      const faceDown = inDef;
+                      const fxClass = fx?.id === unit.instanceId ? `fx-${fx.kind}` : "";
                       return (
                         <div key={unit.instanceId} className="bf-zone">
                           <button
-                            className={`tcg-card tcg-enemy rarity-${unit.rarity} ${inDef ? "tcg-defense" : ""} ${attacker ? "tcg-target" : ""}`}
+                            className={`tcg-card tcg-enemy rarity-${unit.rarity} ${faceDown ? "tcg-facedown" : ""} ${attacker ? "tcg-target" : ""} ${fxClass}`}
                             type="button"
                             disabled={!attacker}
                             onClick={() => strikeUnit(owner.userId, unit.instanceId)}
-                            title={`${unit.name} — ${owner.username} · ${inDef ? "Defense" : "Attack"}`}
+                            title={faceDown ? `Set card — ${owner.username}` : `${unit.name} — ${owner.username} · Attack`}
                           >
-                            <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
-                            <span className="tcg-name">{unit.name}</span>
-                            <span className="tcg-atk">{unit.attack}</span>
-                            <span className="tcg-def">{unit.health}</span>
-                            {inDef ? <span className="tcg-pos">🛡</span> : null}
+                            {faceDown ? (
+                              <>
+                                <img className="tcg-art" src={CARD_BACK_ASSET_PATH} alt="" aria-hidden="true" />
+                                <span className="tcg-name">Set</span>
+                              </>
+                            ) : (
+                              <>
+                                <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
+                                <span className="tcg-name">{unit.name}</span>
+                                <span className="tcg-atk">{unit.attack}</span>
+                                <span className="tcg-def">{unit.health}</span>
+                              </>
+                            )}
+                            {fxClass ? <span className="fx-overlay" aria-hidden="true" /> : null}
                           </button>
                         </div>
                       );
@@ -661,10 +687,11 @@ function TabletopBoard(props: GameBoardProps) {
                       const canAct = isMyTurn && unit.canAttack && !inDef;
                       const selected = unit.instanceId === selectedBoardCardId;
                       const canFlip = isMyTurn && !unit.positionChanged;
+                      const fxClass = fx?.id === unit.instanceId ? `fx-${fx.kind}` : "";
                       return (
                         <div key={unit.instanceId} className="bf-zone tcg-slot">
                           <div
-                            className={`tcg-card tcg-mine rarity-${unit.rarity} ${inDef ? "tcg-defense" : ""} ${selected ? "tcg-selected" : ""} ${canAct ? "tcg-canact" : ""}`}
+                            className={`tcg-card tcg-mine rarity-${unit.rarity} ${inDef ? "tcg-defense" : ""} ${selected ? "tcg-selected" : ""} ${canAct ? "tcg-canact" : ""} ${fxClass}`}
                             role="button"
                             tabIndex={0}
                             onClick={() => {
@@ -678,6 +705,7 @@ function TabletopBoard(props: GameBoardProps) {
                             <span className="tcg-def">{unit.health}</span>
                             {inDef ? <span className="tcg-pos">🛡</span> : null}
                             {canAct ? <span className="tcg-ready">●</span> : null}
+                            {fxClass ? <span className="fx-overlay" aria-hidden="true" /> : null}
                           </div>
                           {canFlip ? (
                             <button className="flip-btn" type="button" onClick={() => onSetPosition(unit.instanceId, inDef ? "attack" : "defense")}>
