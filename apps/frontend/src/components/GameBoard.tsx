@@ -361,6 +361,7 @@ function TabletopBoard(props: GameBoardProps) {
   const activeSeatIndex =
     activePlayerId && currentRoom ? currentRoom.players.findIndex((player) => player.userId === activePlayerId) : -1;
   const me = currentRoom?.players.find((player) => player.userId === props.currentUserId) ?? null;
+  const isMyTurn = Boolean(activePlayerId) && activePlayerId === props.currentUserId;
   const opponents = (currentRoom?.players ?? []).filter((player) => player.userId !== props.currentUserId);
   const possibleTargets = opponents.filter((player) => player.health > 0);
   const activePlayerName = activePlayerId
@@ -555,67 +556,72 @@ function TabletopBoard(props: GameBoardProps) {
             </div>
             <div className="hand-zone hand-zone-side">
               {privateHand.length === 0 ? <p className="muted">No cards in hand.</p> : null}
-              {privateHand.map((card) => (
-                <article key={card.instanceId} className="hand-card hand-card-compact" onMouseMove={onTilt} onMouseLeave={onTiltReset}>
-                  {(() => {
-                    const art = getCardArtSources(card.slug);
-                    return (
-                  <img
-                    className="hand-card-art"
-                    src={art.primary}
-                    alt={card.name}
-                    loading="lazy"
-                    onError={(event) => handleCardArtError(event, card.slug)}
-                  />
-                    );
-                  })()}
-                  <strong>{card.name}</strong>
-                  <span className="muted">
-                    {card.type} | {card.rarity}
-                  </span>
-                  <span className="muted">Cost {card.cost}</span>
-                  <div className="card-hover-detail" aria-hidden="true">
-                    <strong>{card.name}</strong>
-                    <span>{card.description}</span>
-                    <div className="card-hover-stats">
-                      <small>Cost {card.cost}</small>
-                      <small>{card.type}</small>
-                      <small>{card.attack}/{card.health}</small>
-                    </div>
+              {privateHand.map((card) => {
+                const art = getCardArtSources(card.slug);
+                const affordable = (me?.mana ?? 0) >= card.cost;
+                const playable = isMyTurn && affordable;
+                const reason = !isMyTurn ? "Wait for your turn" : !affordable ? `Needs ${card.cost} mana` : "";
+                return (
+                <article
+                  key={card.instanceId}
+                  className={`hand-card hand-card-compact ${!affordable ? "hand-unaffordable" : ""} ${playable ? "hand-playable" : ""}`}
+                  onMouseMove={onTilt}
+                  onMouseLeave={onTiltReset}
+                >
+                  <div className="hand-card-media">
+                    <img
+                      className="hand-card-art"
+                      src={art.primary}
+                      alt={card.name}
+                      loading="lazy"
+                      onError={(event) => handleCardArtError(event, card.slug)}
+                    />
+                    <span className={`hand-cost ${affordable ? "" : "hand-cost-short"}`} title="Mana cost">{card.cost}</span>
+                    {card.type === "unit" ? (
+                      <span className="hand-unit-stats" title="Attack / Health">⚔ {card.attack} &nbsp; ❤ {card.health}</span>
+                    ) : (
+                      <span className="hand-type-tag">Spell</span>
+                    )}
                   </div>
+                  <strong>{card.name}</strong>
+                  <span className="hand-card-desc">{card.description}</span>
                   <div className="row">
                     {card.type === "unit" ? (
-                      <button className="button" type="button" onClick={() => onPlayCard(card.instanceId)}>
+                      <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId)}>
                         <img className="button-icon" src={getIconAssetPath("icon-unit")} alt="" aria-hidden="true" />
                         Play Unit
                       </button>
                     ) : null}
                     {card.type === "spell" && possibleTargets.length <= 1 ? (
                       <button
-                        className="button"
+                        className="button hand-play-btn"
                         type="button"
+                        disabled={!playable}
                         onClick={() => onPlayCard(card.instanceId, possibleTargets[0]?.userId)}
                       >
                         <img className="button-icon" src={getIconAssetPath("icon-spell")} alt="" aria-hidden="true" />
-                        {possibleTargets[0] ? `Use Spell on ${possibleTargets[0].username}` : "Use Spell"}
+                        {possibleTargets[0] ? `Cast on ${possibleTargets[0].username}` : "Cast Spell"}
                       </button>
                     ) : null}
                     {card.type === "spell" && possibleTargets.length > 1
                       ? possibleTargets.map((target) => (
                           <button
                             key={`${card.instanceId}-${target.userId}`}
-                            className="button"
+                            className="button hand-play-btn"
                             type="button"
+                            disabled={!playable}
                             onClick={() => onPlayCard(card.instanceId, target.userId)}
                           >
                             <img className="button-icon" src={getIconAssetPath("icon-attack")} alt="" aria-hidden="true" />
-                            Use Spell on {target.username}
+                            Cast on {target.username}
                           </button>
                         ))
                       : null}
                   </div>
+                  {reason ? <small className="hand-reason">{reason}</small> : null}
                 </article>
-              ))}
+                );
+              })}
             </div>
           </aside>
 

@@ -3795,3 +3795,81 @@ body {
 
 .coach-steps strong { color: #fff; }
 .coach-steps em { color: var(--accent); font-style: normal; }
+
+/* ===== In-game: clearer hand cards ===== */
+.hand-card-media {
+  position: relative;
+}
+
+.hand-cost {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(130deg, #8ce8ff, #2ee6ff);
+  color: #07111f;
+  font-weight: 800;
+  font-size: 0.85rem;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+.hand-cost-short {
+  background: linear-gradient(130deg, #ff9bb0, #ff6f8c);
+}
+
+.hand-unit-stats,
+.hand-type-tag {
+  position: absolute;
+  bottom: 0.3rem;
+  left: 0.3rem;
+  right: 0.3rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.18rem 0.3rem;
+  border-radius: 8px;
+  background: rgba(5, 9, 18, 0.78);
+  color: #e7f1ff;
+}
+
+.hand-type-tag {
+  right: auto;
+  left: 0.3rem;
+  background: rgba(124, 58, 237, 0.5);
+}
+
+.hand-card-desc {
+  font-size: 0.74rem;
+  color: var(--muted);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hand-playable {
+  border-color: rgba(53, 243, 177, 0.5);
+  box-shadow: 0 0 0 1px rgba(53, 243, 177, 0.25);
+}
+
+.hand-unaffordable {
+  opacity: 0.55;
+  filter: saturate(0.7);
+}
+
+.hand-play-btn {
+  width: 100%;
+  font-size: 0.82rem;
+}
+
+.hand-reason {
+  color: #ff9bb0;
+  font-size: 0.72rem;
+  text-align: center;
+}
