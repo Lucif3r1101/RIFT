@@ -340,6 +340,19 @@ function TabletopBoard(props: GameBoardProps) {
   const [hoveredTargetPlayerId, setHoveredTargetPlayerId] = useState<string | null>(null);
   const [actionHistory, setActionHistory] = useState<RoomActionEvent[]>([]);
   const [defeatedSignals, setDefeatedSignals] = useState<DefeatedSignal[]>([]);
+  const [showCoach, setShowCoach] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("tcg-board-coach-v1") !== "seen";
+  });
+
+  const dismissCoach = () => {
+    setShowCoach(false);
+    try {
+      localStorage.setItem("tcg-board-coach-v1", "seen");
+    } catch {
+      // ignore storage errors
+    }
+  };
   const lastTurnRef = useRef<number | null>(null);
   const previousBoardsRef = useRef<Record<string, RoomCard[]>>({});
   const turnKey = battle?.turn ?? activeMatchState?.turn ?? null;
@@ -470,21 +483,55 @@ function TabletopBoard(props: GameBoardProps) {
           <VictoryOverlay won={iWon} winnerName={winnerName} onExit={props.onLeaveRoom} />
         </Suspense>
       ) : null}
+
+      {showCoach ? (
+        <div className="coach-overlay" role="dialog" aria-modal="true" onClick={dismissCoach}>
+          <div className="coach-card" onClick={(e) => e.stopPropagation()}>
+            <h3>How a duel works</h3>
+            <ol className="coach-steps">
+              <li><strong>Turn bar (top):</strong> shows whose turn it is, your ❤ health, ◆ mana, and the timer.</li>
+              <li><strong>Your Hand (left):</strong> tap <em>Play Unit</em> to put a unit on your field, or <em>Use Spell</em> to fire its effect. Each card costs ◆ mana.</li>
+              <li><strong>The table (center):</strong> your units sit on Your Field (bottom); opponents are around the table.</li>
+              <li><strong>Attack:</strong> select one of your units, then choose an enemy player or their unit to attack.</li>
+              <li><strong>End Turn</strong> when you're done — mana and a fresh card come next turn.</li>
+              <li><strong>Win:</strong> reduce every opponent's health to 0.</li>
+            </ol>
+            <button className="button primary auth-submit" type="button" onClick={dismissCoach}>Got it</button>
+          </div>
+        </div>
+      ) : null}
+
       <section className="grid table-panel tabletop-only duel-layout">
-        <h3 style={{ margin: 0 }}>Tabletop Arena</h3>
-        <div className="turn-banner">
-          <div className={`turn-orb ${battle || activeMatchState ? "active" : ""}`} />
-          <p>Turn {battle?.turn ?? activeMatchState?.turn ?? "--"}</p>
-          <span>Timer: {formatTimer(timer)}</span>
-        </div>
-        <div className="row">
-          <strong>Room: {currentRoom?.roomCode ?? "--"}</strong>
-          {currentRoom?.status === "open" ? <span className="muted">Waiting lobby: set ready and host starts</span> : null}
-        </div>
-        <div className="combat-hint-banner">
-          <strong>How To Attack</strong>
-          <span>Select one of your units on <strong>Your Field</strong>, then use the attack buttons in the selected card panel.</span>
-        </div>
+        {(() => {
+          const inGame = currentRoom?.status === "in_game";
+          const isMyTurn = Boolean(activePlayerId) && activePlayerId === props.currentUserId;
+          const status = !inGame ? "lobby" : isMyTurn ? "mine" : "other";
+          const heading = !inGame ? "Waiting to start" : isMyTurn ? "Your turn" : `${activePlayerName ?? "Opponent"}'s turn`;
+          const hint = !inGame
+            ? "Ready up — the host starts the duel."
+            : isMyTurn
+              ? "Play cards from your hand, attack with your units, then End Turn."
+              : "Watch the board until it's your turn.";
+          return (
+            <div className={`battle-status-bar bsb-${status}`}>
+              <div className="bsb-turn">
+                <span className="bsb-dot" />
+                <div>
+                  <strong>{heading}</strong>
+                  <span className="bsb-hint">{hint}</span>
+                </div>
+              </div>
+              <div className="bsb-stats">
+                <span className="bsb-stat bsb-hp">❤ {me?.health ?? "--"}</span>
+                <span className="bsb-stat bsb-mana">◆ {me ? `${me.mana}/${me.maxMana}` : "--"}</span>
+                <span className="bsb-stat bsb-timer">⏱ {formatTimer(timer)}</span>
+                <span className="bsb-stat">Turn {battle?.turn ?? activeMatchState?.turn ?? "--"}</span>
+                <span className="bsb-stat">Room {currentRoom?.roomCode ?? "--"}</span>
+                <button className="bsb-help" type="button" onClick={() => setShowCoach(true)} aria-label="How to play">?</button>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="duel-shell">
           <aside className="side-panel hand-panel">

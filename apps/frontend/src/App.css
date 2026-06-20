@@ -3659,3 +3659,139 @@ body {
   border-top: 1px solid var(--line);
   margin: 0.4rem 0;
 }
+
+/* ===== In-game: turn status bar ===== */
+.battle-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.7rem 1rem;
+  background: rgba(10, 17, 33, 0.8);
+}
+
+.battle-status-bar.bsb-mine {
+  border-color: rgba(53, 243, 177, 0.55);
+  background: linear-gradient(120deg, rgba(53, 243, 177, 0.12), rgba(10, 17, 33, 0.8));
+}
+
+.bsb-turn {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.bsb-turn > div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.bsb-turn strong {
+  font-family: "Rajdhani", sans-serif;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.bsb-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.bsb-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--muted);
+  flex: 0 0 auto;
+}
+
+.bsb-mine .bsb-dot {
+  background: var(--accent-2);
+  box-shadow: 0 0 0 4px rgba(53, 243, 177, 0.2);
+  animation: turnPulse 1.6s ease-in-out infinite;
+}
+
+.bsb-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.bsb-stat {
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(7, 12, 24, 0.6);
+}
+
+.bsb-hp { color: #ff8da3; }
+.bsb-mana { color: #8ce8ff; }
+.bsb-timer { color: var(--accent-2); }
+
+.bsb-help {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(7, 12, 24, 0.6);
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.bsb-help:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ===== In-game: coach overlay ===== */
+.coach-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 78;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(3, 7, 18, 0.82);
+  backdrop-filter: blur(6px);
+  overflow-y: auto;
+}
+
+.coach-card {
+  width: min(440px, 100%);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1.3rem;
+  display: grid;
+  gap: 0.8rem;
+  background: linear-gradient(165deg, rgba(15, 27, 50, 0.98), rgba(8, 13, 26, 0.98));
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  animation: cardIn 220ms ease;
+}
+
+.coach-card h3 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  font-size: 1.5rem;
+}
+
+.coach-steps {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.55rem;
+  color: #cfddf7;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.coach-steps strong { color: #fff; }
+.coach-steps em { color: var(--accent); font-style: normal; }
