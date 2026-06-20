@@ -728,9 +728,14 @@ export function App() {
                   : socketRef.current?.emit("match_end_turn", { matchId: activeMatchState?.matchId })
               }
               onDrawCard={() => (currentRoom ? socketRef.current?.emit("room_draw_card", { roomCode: currentRoom.roomCode }) : undefined)}
-              onPlayCard={(cardInstanceId, targetUserId) =>
+              onPlayCard={(cardInstanceId, targetUserId, position) =>
                 currentRoom
-                  ? socketRef.current?.emit("room_play_card", { roomCode: currentRoom.roomCode, cardInstanceId, targetUserId })
+                  ? socketRef.current?.emit("room_play_card", { roomCode: currentRoom.roomCode, cardInstanceId, targetUserId, position })
+                  : undefined
+              }
+              onSetPosition={(cardInstanceId, position) =>
+                currentRoom
+                  ? socketRef.current?.emit("room_set_position", { roomCode: currentRoom.roomCode, cardInstanceId, position })
                   : undefined
               }
               onAttackPlayer={(attackerCardInstanceId, targetUserId, targetCardInstanceId) =>

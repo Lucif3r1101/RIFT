@@ -4328,3 +4328,114 @@ body {
   .tcg-card { transform: rotateX(-10deg); }
   .tcg-canact:hover, .tcg-selected { transform: rotateX(-10deg) translateY(-6px); }
 }
+
+/* ===== YGO: ATK/DEF, positions, piles, flip ===== */
+.play-stance {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+  width: 100%;
+}
+.play-stance .hand-play-btn { padding: 0.4rem 0.3rem; font-size: 0.74rem; }
+
+/* DEF gem (shield) — mirrors .tcg-hp position but blue */
+.tcg-def {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #07111f;
+  background: linear-gradient(140deg, #8ce8ff, #2ea6ff);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.tcg-pos {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  font-size: 0.8rem;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+}
+
+/* Defense position: laid sideways like a set monster */
+.tcg-defense {
+  transform: rotateX(-15deg) rotate(8deg);
+  border-style: dashed;
+}
+.tcg-defense .tcg-atk { opacity: 0.5; }
+
+.tcg-slot {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+}
+
+.flip-btn {
+  border: 1px solid var(--line);
+  background: rgba(7, 12, 24, 0.85);
+  color: #cfe0ff;
+  border-radius: 8px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+}
+.flip-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Deck / discard piles */
+.duel-piles {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.pile {
+  position: relative;
+  width: 74px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(7, 12, 24, 0.7);
+  padding: 0.3rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  color: var(--text);
+}
+
+.pile-art {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 7px;
+  opacity: 0.92;
+}
+
+.pile-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 1.4rem;
+  text-align: center;
+  background: rgba(3, 7, 18, 0.85);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 0.05rem 0.3rem;
+}
+
+.pile-label { font-size: 0.7rem; color: var(--muted); }
+
+.pile-deck { cursor: not-allowed; }
+.pile-draw {
+  cursor: pointer;
+  border-color: rgba(53, 243, 177, 0.6);
+  box-shadow: 0 0 0 1px rgba(53, 243, 177, 0.3);
+  animation: turnPulse 1.8s ease-in-out infinite;
+}
+.pile-draw .pile-label { color: var(--accent-2); font-weight: 700; }

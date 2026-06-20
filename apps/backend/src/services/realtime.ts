@@ -17,7 +17,8 @@ import {
   roomDrawCardPayloadSchema,
   roomJoinPayloadSchema,
   roomPlayCardPayloadSchema,
-  roomReadyPayloadSchema
+  roomReadyPayloadSchema,
+  roomSetPositionPayloadSchema
 } from "./realtime.validation.js";
 
 type MatchmakingQueueEntry = {
@@ -71,8 +72,14 @@ type RoomCard = {
   rarity: "common" | "rare" | "epic" | "legendary";
   cost: number;
   attack: number;
+  // For units this doubles as DEF in the Yu-Gi-Oh-style combat model
+  // (attack = ATK, health = DEF). Players still use health as life points.
   health: number;
   canAttack: boolean;
+  // "attack": can declare attacks, uses ATK. "defense": cannot attack, uses DEF.
+  position: "attack" | "defense";
+  // True once a unit has changed position this turn (one change per turn).
+  positionChanged: boolean;
 };
 
 type RoomBattleState = {
@@ -342,7 +349,9 @@ function buildFactionDeck(factionId: string): RoomCard[] {
     cost: card.cost,
     attack: card.attack,
     health: card.health,
-    canAttack: false
+    canAttack: false,
+    position: "attack" as const,
+    positionChanged: false
   }));
 
   return shuffleCards(cards);
@@ -363,9 +372,13 @@ function drawCardsForPlayer(player: RoomPlayer, count: number): void {
 }
 
 function refreshBoardAttackAvailability(player: RoomPlayer): void {
+  // At the owner's turn start every unit refreshes its action and may change
+  // position again. Defense-position units still cannot declare attacks (that is
+  // enforced in combat), but they get a fresh position-change for the turn.
   player.board = player.board.map((card) => ({
     ...card,
-    canAttack: true
+    canAttack: true,
+    positionChanged: false
   }));
 }
 
@@ -395,7 +408,7 @@ function advanceRoomTurn(room: RoomState): void {
   if (nextPlayer) {
     nextPlayer.maxMana = Math.min(nextPlayer.maxMana + 1, 10);
     nextPlayer.mana = nextPlayer.maxMana;
-    drawCardsForPlayer(nextPlayer, 1);
+    // Draw is now manual: the active player taps their deck once per turn.
     refreshBoardAttackAvailability(nextPlayer);
   }
 }
@@ -474,23 +487,32 @@ function selectTargets(room: RoomState, caster: RoomPlayer, targetMode: TargetMo
   return [opponents[randomIndex]];
 }
 
-function executeCardEffect(room: RoomState, caster: RoomPlayer, card: RoomCard, targetUserId?: string): void {
+function executeCardEffect(
+  room: RoomState,
+  caster: RoomPlayer,
+  card: RoomCard,
+  targetUserId?: string,
+  position: "attack" | "defense" = "attack"
+): void {
   const script = CARD_EFFECTS_BY_SLUG.get(card.slug);
+
+  if (card.type === "unit") {
+    const unitCard: RoomCard = {
+      ...card,
+      attack: card.attack + (script?.unitBoardAttackBonus ?? 0),
+      health: card.health + (script?.unitBoardHealthBonus ?? 0),
+      canAttack: false,
+      position,
+      positionChanged: false
+    };
+    caster.board.push(unitCard);
+  }
+
   if (!script) {
     return;
   }
 
   const targets = selectTargets(room, caster, script.targetMode, targetUserId);
-
-  if (card.type === "unit") {
-    const unitCard: RoomCard = {
-      ...card,
-      attack: card.attack + script.unitBoardAttackBonus,
-      health: card.health + script.unitBoardHealthBonus,
-      canAttack: false
-    };
-    caster.board.push(unitCard);
-  }
 
   for (const op of script.operations) {
     if (op.kind === "damage") {
@@ -568,7 +590,11 @@ function executeBoardAttack(
   }
 
   if (!attacker.canAttack) {
-    return { error: "That unit cannot attack right now." };
+    return { error: "That unit has already acted this turn." };
+  }
+
+  if (attacker.position !== "attack") {
+    return { error: "A unit must be in Attack position to attack." };
   }
 
   const target = room.players.find((player) => player.userId === targetUserId && player.userId !== attackerPlayer.userId);
@@ -576,38 +602,64 @@ function executeBoardAttack(
     return { error: "Target player is not available." };
   }
 
+  const destroy = (owner: RoomPlayer, card: RoomCard) => {
+    owner.board = owner.board.filter((entry) => entry.instanceId !== card.instanceId);
+    owner.discard.push({ ...card, canAttack: false });
+    syncPlayerCardCounts(owner);
+  };
+
   if (targetCardInstanceId) {
     const targetCard = target.board.find((card) => card.instanceId === targetCardInstanceId);
     if (!targetCard) {
       return { error: "Target unit is not available." };
     }
 
-    targetCard.health -= attacker.attack;
-    attacker.health -= targetCard.attack;
     attacker.canAttack = false;
+    let damage = 0;
 
-    attackerPlayer.board = attackerPlayer.board.filter((card) => card.health > 0);
-    target.board = target.board.filter((card) => card.health > 0);
+    if (targetCard.position === "attack") {
+      // ATK vs ATK: higher ATK wins; loser's controller takes the difference.
+      if (attacker.attack > targetCard.attack) {
+        damage = attacker.attack - targetCard.attack;
+        target.health = Math.max(0, target.health - damage);
+        destroy(target, targetCard);
+      } else if (attacker.attack < targetCard.attack) {
+        damage = targetCard.attack - attacker.attack;
+        attackerPlayer.health = Math.max(0, attackerPlayer.health - damage);
+        destroy(attackerPlayer, attacker);
+      } else {
+        destroy(target, targetCard);
+        destroy(attackerPlayer, attacker);
+      }
+    } else {
+      // ATK vs DEF (target.health is its DEF). No life-point damage unless the
+      // attacker is weaker than the wall, which reflects damage back.
+      const def = targetCard.health;
+      if (attacker.attack > def) {
+        destroy(target, targetCard);
+      } else if (attacker.attack < def) {
+        damage = def - attacker.attack;
+        attackerPlayer.health = Math.max(0, attackerPlayer.health - damage);
+      }
+      // equal: nothing is destroyed, no damage
+    }
+
     syncPlayerCardCounts(attackerPlayer);
     syncPlayerCardCounts(target);
 
-    return {
-      attacker,
-      target,
-      damage: attacker.attack,
-      targetCardName: targetCard.name
-    };
+    return { attacker, target, damage, targetCardName: targetCard.name };
   }
 
-  target.health = Math.max(0, target.health - attacker.attack);
+  // Direct attack — only allowed when the target has no units to defend.
+  if (target.board.length > 0) {
+    return { error: "You must destroy their units before attacking them directly." };
+  }
+
   attacker.canAttack = false;
+  target.health = Math.max(0, target.health - attacker.attack);
   syncPlayerCardCounts(attackerPlayer);
 
-  return {
-    attacker,
-    target,
-    damage: attacker.attack
-  };
+  return { attacker, target, damage: attacker.attack };
 }
 
 function emitRoomAction(io: Server, room: RoomState, payload: RoomActionPayload): void {
@@ -1243,8 +1295,65 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
         return;
       }
 
-      socket.emit("room_error", { message: "Cards draw automatically at turn start or through card effects." });
-      return;
+      if (room.battle.manualDrawUsed) {
+        socket.emit("room_error", { message: "You already drew this turn." });
+        return;
+      }
+
+      const drawer = room.players.find((entry) => entry.userId === userId);
+      if (!drawer) {
+        socket.emit("room_error", { message: "Player not found in room." });
+        return;
+      }
+
+      drawCardsForPlayer(drawer, 1);
+      room.battle.manualDrawUsed = true;
+
+      emitRoomAction(io, room, {
+        roomCode,
+        actionType: "draw",
+        actorUserId: userId,
+        actorUsername: drawer.username,
+        turn: room.battle.turn,
+        timestamp: new Date().toISOString()
+      });
+      emitRoomState(io, room);
+    });
+
+    socket.on("room_set_position", (payload: unknown) => {
+      const parsed = roomSetPositionPayloadSchema.safeParse(payload);
+      if (!parsed.success) {
+        socket.emit("room_error", { message: "Invalid position payload." });
+        return;
+      }
+
+      const roomCode = normalizeRoomCode(parsed.data.roomCode);
+      const room = findRoomByCodeForActivePlayer(roomCode);
+      if (!room || !room.battle) {
+        socket.emit("room_error", { message: "Active room game not found." });
+        return;
+      }
+
+      if (room.battle.activePlayerId !== userId) {
+        socket.emit("room_error", { message: "Not your turn." });
+        return;
+      }
+
+      const positioner = room.players.find((entry) => entry.userId === userId);
+      const unit = positioner?.board.find((card) => card.instanceId === parsed.data.cardInstanceId);
+      if (!positioner || !unit) {
+        socket.emit("room_error", { message: "Unit not found on your board." });
+        return;
+      }
+
+      if (unit.positionChanged) {
+        socket.emit("room_error", { message: "That unit already changed position this turn." });
+        return;
+      }
+
+      unit.position = parsed.data.position;
+      unit.positionChanged = true;
+      emitRoomState(io, room);
     });
 
     socket.on("room_play_card", (payload: unknown) => {
@@ -1292,7 +1401,7 @@ export function registerRealtime(io: Server, jwtSecret: string): void {
       player.mana -= card.cost;
       player.hand.splice(cardIndex, 1);
 
-      executeCardEffect(room, player, card, parsed.data.targetUserId);
+      executeCardEffect(room, player, card, parsed.data.targetUserId, parsed.data.position ?? "attack");
       if (card.type === "spell") {
         player.discard.push(card);
       }

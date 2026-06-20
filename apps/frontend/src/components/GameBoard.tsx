@@ -47,7 +47,8 @@ type GameBoardProps = {
   onQueueJoin: () => void;
   onEndTurn: () => void;
   onDrawCard: () => void;
-  onPlayCard: (cardInstanceId: string, targetUserId?: string) => void;
+  onPlayCard: (cardInstanceId: string, targetUserId?: string, position?: "attack" | "defense") => void;
+  onSetPosition: (cardInstanceId: string, position: "attack" | "defense") => void;
   onAttackPlayer: (attackerCardInstanceId: string, targetUserId: string, targetCardInstanceId?: string) => void;
   onConcede: () => void;
   onTilt: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -326,6 +327,8 @@ function TabletopBoard(props: GameBoardProps) {
     onLeaveRoom,
     onEndTurn,
     onPlayCard,
+    onSetPosition,
+    onDrawCard,
     onAttackPlayer,
     onConcede,
     onTilt,
@@ -511,12 +514,12 @@ function TabletopBoard(props: GameBoardProps) {
           <div className="coach-card" onClick={(e) => e.stopPropagation()}>
             <h3>How a duel works</h3>
             <ol className="coach-steps">
-              <li><strong>Turn bar:</strong> shows whose turn it is, your ❤ health, ◆ mana, and the timer.</li>
-              <li><strong>Your Hand (bottom):</strong> tap <em>Play</em> to drop a unit, or <em>Cast</em> a spell. Each card costs ◆ mana.</li>
-              <li><strong>Your Field:</strong> your units sit here. Tap one (when it can act), then tap an enemy to attack.</li>
-              <li><strong>Opponents (top):</strong> attack their units or them directly to lower their ❤.</li>
-              <li><strong>End Turn</strong> when done — you get mana and a card next turn.</li>
-              <li><strong>Win</strong> by dropping every opponent to 0 ❤.</li>
+              <li><strong>Draw:</strong> at the start of your turn, tap your <em>Deck</em> pile to draw a card.</li>
+              <li><strong>Summon or Set:</strong> from your hand, <em>⚔ Summon</em> a unit (Attack position, uses ATK) or <em>🛡 Set</em> it (Defense position, uses DEF and guards you). Spells <em>Cast</em> instantly. Each costs ◆ mana.</li>
+              <li><strong>Attack:</strong> tap your unit (Attack position only), then tap an enemy unit or player.</li>
+              <li><strong>Combat:</strong> higher ATK wins and deals the difference as damage. Attacking a Defense unit compares your ATK vs its 🛡 DEF — no life damage unless your ATK is lower.</li>
+              <li><strong>Flip:</strong> use a unit's <em>⟳</em> button to switch its stance (once per turn).</li>
+              <li><strong>Win:</strong> reduce every opponent to 0 ❤. You can only attack a player directly when they have no units.</li>
             </ol>
             <button className="button primary auth-submit" type="button" onClick={dismissCoach}>Got it</button>
           </div>
@@ -606,21 +609,25 @@ function TabletopBoard(props: GameBoardProps) {
                 <div className="bf-row bf-enemy">
                   {opponents.every((p) => p.board.length === 0) ? <span className="bf-empty">No enemy units on the field</span> : null}
                   {opponents.flatMap((player) =>
-                    player.board.map((unit) => (
-                      <button
-                        key={unit.instanceId}
-                        className={`tcg-card tcg-enemy rarity-${unit.rarity} ${attacker ? "tcg-target" : ""}`}
-                        type="button"
-                        disabled={!attacker}
-                        onClick={() => strikeUnit(player.userId, unit.instanceId)}
-                        title={`${unit.name} — ${player.username}`}
-                      >
-                        <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
-                        <span className="tcg-name">{unit.name}</span>
-                        <span className="tcg-atk">{unit.attack}</span>
-                        <span className="tcg-hp">{unit.health}</span>
-                      </button>
-                    ))
+                    player.board.map((unit) => {
+                      const inDef = unit.position === "defense";
+                      return (
+                        <button
+                          key={unit.instanceId}
+                          className={`tcg-card tcg-enemy rarity-${unit.rarity} ${inDef ? "tcg-defense" : ""} ${attacker ? "tcg-target" : ""}`}
+                          type="button"
+                          disabled={!attacker}
+                          onClick={() => strikeUnit(player.userId, unit.instanceId)}
+                          title={`${unit.name} — ${player.username} · ${inDef ? "Defense" : "Attack"}`}
+                        >
+                          <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
+                          <span className="tcg-name">{unit.name}</span>
+                          <span className="tcg-atk">{unit.attack}</span>
+                          <span className="tcg-def">{unit.health}</span>
+                          {inDef ? <span className="tcg-pos">🛡</span> : null}
+                        </button>
+                      );
+                    })
                   )}
                 </div>
 
@@ -629,26 +636,56 @@ function TabletopBoard(props: GameBoardProps) {
                 <div className="bf-row bf-you">
                   {(me?.board.length ?? 0) === 0 ? <span className="bf-empty">Play units from your hand to fill your field</span> : null}
                   {me?.board.map((unit) => {
-                    const canAct = isMyTurn && unit.canAttack;
+                    const inDef = unit.position === "defense";
+                    const canAct = isMyTurn && unit.canAttack && !inDef;
                     const selected = unit.instanceId === selectedBoardCardId;
+                    const canFlip = isMyTurn && !unit.positionChanged;
                     return (
-                      <button
-                        key={unit.instanceId}
-                        className={`tcg-card tcg-mine rarity-${unit.rarity} ${selected ? "tcg-selected" : ""} ${canAct ? "tcg-canact" : ""}`}
-                        type="button"
-                        onClick={() => setSelectedBoardCardId(selected ? null : canAct ? unit.instanceId : null)}
-                        disabled={!canAct}
-                        title={unit.name}
-                      >
-                        <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
-                        <span className="tcg-name">{unit.name}</span>
-                        <span className="tcg-atk">{unit.attack}</span>
-                        <span className="tcg-hp">{unit.health}</span>
-                        {canAct ? <span className="tcg-ready">●</span> : null}
-                      </button>
+                      <div key={unit.instanceId} className="tcg-slot">
+                        <div
+                          className={`tcg-card tcg-mine rarity-${unit.rarity} ${inDef ? "tcg-defense" : ""} ${selected ? "tcg-selected" : ""} ${canAct ? "tcg-canact" : ""}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            if (canAct) setSelectedBoardCardId(selected ? null : unit.instanceId);
+                          }}
+                          title={`${unit.name} · ${inDef ? "Defense" : "Attack"}`}
+                        >
+                          <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
+                          <span className="tcg-name">{unit.name}</span>
+                          <span className="tcg-atk">{unit.attack}</span>
+                          <span className="tcg-def">{unit.health}</span>
+                          {inDef ? <span className="tcg-pos">🛡</span> : null}
+                          {canAct ? <span className="tcg-ready">●</span> : null}
+                        </div>
+                        {canFlip ? (
+                          <button className="flip-btn" type="button" onClick={() => onSetPosition(unit.instanceId, inDef ? "attack" : "defense")}>
+                            ⟳ {inDef ? "Attack" : "Defend"}
+                          </button>
+                        ) : null}
+                      </div>
                     );
                   })}
                 </div>
+              </div>
+            </div>
+
+            <div className="duel-piles">
+              <button
+                className={`pile pile-deck ${isMyTurn && !battle?.manualDrawUsed ? "pile-draw" : ""}`}
+                type="button"
+                disabled={!isMyTurn || Boolean(battle?.manualDrawUsed)}
+                onClick={onDrawCard}
+                title="Draw a card"
+              >
+                <img className="pile-art" src={DECK_BACK_ASSET_PATH} alt="" aria-hidden="true" />
+                <span className="pile-count">{me?.deckCount ?? 0}</span>
+                <span className="pile-label">{isMyTurn && !battle?.manualDrawUsed ? "Draw" : "Deck"}</span>
+              </button>
+              <div className="pile pile-discard">
+                <img className="pile-art" src={CARD_BACK_ASSET_PATH} alt="" aria-hidden="true" />
+                <span className="pile-count">{me?.discardCount ?? 0}</span>
+                <span className="pile-label">Discard</span>
               </div>
             </div>
 
@@ -670,7 +707,7 @@ function TabletopBoard(props: GameBoardProps) {
                         <img className="hand-card-art" src={art.primary} alt={card.name} loading="lazy" onError={(e) => handleCardArtError(e, card.slug)} />
                         <span className={`hand-cost ${affordable ? "" : "hand-cost-short"}`} title="Mana cost">{card.cost}</span>
                         {card.type === "unit" ? (
-                          <span className="hand-unit-stats">⚔ {card.attack} &nbsp; ❤ {card.health}</span>
+                          <span className="hand-unit-stats">⚔ {card.attack} &nbsp; 🛡 {card.health}</span>
                         ) : (
                           <span className="hand-type-tag">Spell</span>
                         )}
@@ -679,7 +716,10 @@ function TabletopBoard(props: GameBoardProps) {
                       <span className="hand-card-desc">{card.description}</span>
                       <div className="row">
                         {card.type === "unit" ? (
-                          <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId)}>Play Unit</button>
+                          <div className="play-stance">
+                            <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId, undefined, "attack")} title="Summon in Attack position (uses ATK)">⚔ Summon</button>
+                            <button className="button hand-play-btn button-secondary" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId, undefined, "defense")} title="Set in Defense position (uses DEF, guards you)">🛡 Set</button>
+                          </div>
                         ) : possibleTargets.length <= 1 ? (
                           <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId, possibleTargets[0]?.userId)}>
                             {possibleTargets[0] ? `Cast on ${possibleTargets[0].username}` : "Cast"}

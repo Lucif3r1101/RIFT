@@ -54,6 +54,8 @@ export type RoomCard = {
   attack: number;
   health: number;
   canAttack: boolean;
+  position?: "attack" | "defense";
+  positionChanged?: boolean;
 };
 
 export type RoomPlayer = {
@@ -78,6 +80,7 @@ export type RoomBattleState = {
   playerOrder: string[];
   turnDeadlineAt: string;
   winnerId: string | null;
+  manualDrawUsed?: boolean;
 };
 
 export type RoomState = {

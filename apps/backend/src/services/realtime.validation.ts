@@ -42,7 +42,14 @@ export const roomReadyPayloadSchema = z.object({
 export const roomPlayCardPayloadSchema = z.object({
   roomCode: z.string().min(4).max(12),
   cardInstanceId: z.string().min(4),
-  targetUserId: z.string().optional()
+  targetUserId: z.string().optional(),
+  position: z.enum(["attack", "defense"]).optional()
+});
+
+export const roomSetPositionPayloadSchema = z.object({
+  roomCode: z.string().min(4).max(12),
+  cardInstanceId: z.string().min(4),
+  position: z.enum(["attack", "defense"])
 });
 
 export const roomAttackPayloadSchema = z.object({
@@ -61,5 +68,6 @@ export type MatchActionPayload = z.infer<typeof matchActionPayloadSchema>;
 export type RoomCreatePayload = z.infer<typeof roomCreatePayloadSchema>;
 export type RoomJoinPayload = z.infer<typeof roomJoinPayloadSchema>;
 export type RoomPlayCardPayload = z.infer<typeof roomPlayCardPayloadSchema>;
+export type RoomSetPositionPayload = z.infer<typeof roomSetPositionPayloadSchema>;
 export type RoomAttackPayload = z.infer<typeof roomAttackPayloadSchema>;
 export type RoomDrawCardPayload = z.infer<typeof roomDrawCardPayloadSchema>;
