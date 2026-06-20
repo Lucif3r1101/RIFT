@@ -6,6 +6,7 @@ import { GameBoard } from "./components/GameBoard";
 import { TopNav } from "./components/TopNav";
 import { CardLibrary } from "./components/CardLibrary";
 import { RiftBackground } from "./components/RiftBackground";
+import { RiftOrb } from "./components/RiftOrb";
 import { ForgotPasswordModal } from "./components/modals/ForgotPasswordModal";
 import { GuideModal } from "./components/modals/GuideModal";
 import { LegalModal } from "./components/modals/LegalModal";
@@ -606,7 +607,10 @@ export function App() {
       {!currentUser ? (
         <section className="hero">
           <div className="hero-content">
-            <img className="hero-logo" src="/assets/branding/chronicles-rift-logo.svg" alt="" aria-hidden="true" />
+            <div className="hero-emblem">
+              <RiftOrb className="hero-orb" />
+              <img className="hero-logo" src="/assets/branding/chronicles-rift-logo.svg" alt="" aria-hidden="true" />
+            </div>
             <span className="hero-kicker">Sci-Fantasy Trading Card Game</span>
             <h1>Chronicles of the RIFT</h1>
             <p>

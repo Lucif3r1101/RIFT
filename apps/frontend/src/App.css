@@ -131,11 +131,29 @@ body {
   gap: 0.55rem;
 }
 
+.hero-emblem {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.1rem;
+}
+
+.hero-orb {
+  position: absolute;
+  inset: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  pointer-events: none;
+}
+
 .hero-logo {
+  position: relative;
+  z-index: 1;
   width: 64px;
   height: 64px;
   object-fit: contain;
-  margin-bottom: 0.2rem;
 }
 
 .hero-kicker {
@@ -3096,8 +3114,8 @@ body {
   pointer-events: none;
 }
 
-/* Keep app content above the canvas */
-.page > *:not(.rift-bg) {
+/* Keep app content above the canvas (but never override the fixed top nav) */
+.page > *:not(.rift-bg):not(.top-nav) {
   position: relative;
   z-index: 1;
 }
