@@ -362,6 +362,7 @@ function TabletopBoard(props: GameBoardProps) {
   const [turnBanner, setTurnBanner] = useState<{ text: string; mine: boolean } | null>(null);
   const [attackLine, setAttackLine] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [attackInfo, setAttackInfo] = useState<{ attacker: string; target: string } | null>(null);
+  const [clash, setClash] = useState<{ slug: string; name: string; fx: "slash" | "shield"; label: string; tone: "destroy" | "reduce" | "block" } | null>(null);
   const lastActiveRef = useRef<string | null>(null);
   const [showCoach, setShowCoach] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -572,11 +573,19 @@ function TabletopBoard(props: GameBoardProps) {
     window.setTimeout(() => setShake(false), 640);
     window.setTimeout(() => setFx(null), 1050);
   };
+  // Show the big center-stage clash so the result is never cropped by the
+  // tilted battlefield. `fx`/`tone` drive the burst + caption.
+  const showClash = (fx: "slash" | "shield", label: string, tone: "destroy" | "reduce" | "block") => {
+    if (!attacker) return;
+    setClash({ slug: attacker.slug, name: attacker.name, fx, label, tone });
+    window.setTimeout(() => setClash(null), 1300);
+  };
   const strikePlayer = (targetUserId: string, health: number) => {
     if (attacker && health > 0) {
       const target = opponents.find((p) => p.userId === targetUserId);
       setAttackInfo({ attacker: attacker.name, target: target?.username ?? "the enemy" });
       window.setTimeout(() => setAttackInfo(null), 1400);
+      showClash("slash", `−${attacker.attack} LP`, "reduce");
       fireFx(`player-${targetUserId}`, "slash", `[data-plateid="${targetUserId}"]`);
       onAttackPlayer(attacker.instanceId, targetUserId);
       setSelectedBoardCardId(null);
@@ -585,11 +594,27 @@ function TabletopBoard(props: GameBoardProps) {
   const strikeUnit = (targetUserId: string, unitId: string) => {
     if (!attacker) return;
     const targetUnit = opponents.find((p) => p.userId === targetUserId)?.board.find((c) => c.instanceId === unitId);
-    // Shield clang if the wall holds (defense DEF >= our ATK); otherwise a slash.
-    const blocked = targetUnit?.position === "defense" && targetUnit.health >= attacker.attack;
+    // Predict the outcome client-side so the center animation matches what the
+    // server will resolve (full data is available even though it's hidden in UI).
+    let fx: "slash" | "shield" = "slash";
+    let label = "Clash!";
+    let tone: "destroy" | "reduce" | "block" = "destroy";
+    if (targetUnit) {
+      if (targetUnit.position === "defense") {
+        const def = targetUnit.health;
+        if (attacker.attack > def) { fx = "slash"; label = "💥 Destroyed!"; tone = "destroy"; }
+        else if (attacker.attack < def) { fx = "shield"; label = `🛡 Repelled −${def - attacker.attack} LP`; tone = "reduce"; }
+        else { fx = "shield"; label = "🛡 Blocked!"; tone = "block"; }
+      } else {
+        if (attacker.attack > targetUnit.attack) { fx = "slash"; label = "💥 Destroyed!"; tone = "destroy"; }
+        else if (attacker.attack < targetUnit.attack) { fx = "slash"; label = `Repelled −${targetUnit.attack - attacker.attack} LP`; tone = "reduce"; }
+        else { fx = "slash"; label = "💥 Both fall!"; tone = "destroy"; }
+      }
+    }
     setAttackInfo({ attacker: attacker.name, target: targetUnit?.name ?? "a unit" });
     window.setTimeout(() => setAttackInfo(null), 1400);
-    fireFx(unitId, blocked ? "shield" : "slash", `[data-cardid="${unitId}"]`);
+    showClash(fx, label, tone);
+    fireFx(unitId, fx, `[data-cardid="${unitId}"]`);
     onAttackPlayer(attacker.instanceId, targetUserId, unitId);
     setSelectedBoardCardId(null);
   };
@@ -603,6 +628,16 @@ function TabletopBoard(props: GameBoardProps) {
 
   return (
     <div className="grid">
+      {clash ? (
+        <div className="clash-stage" aria-hidden="true">
+          <div className={`clash-card clash-${clash.fx}`}>
+            <img className="clash-art" src={getCardArtSources(clash.slug).primary} alt="" onError={(e) => handleCardArtError(e, clash.slug)} />
+            <span className="clash-card-name">{clash.name}</span>
+            <span className={`clash-burst burst-${clash.fx}`}>{clash.fx === "shield" ? "🛡" : "⚔"}</span>
+          </div>
+          <div className={`clash-label tone-${clash.tone}`}>{clash.label}</div>
+        </div>
+      ) : null}
       {attackLine ? (
         <svg className="attack-beam-layer" aria-hidden="true">
           <defs>
