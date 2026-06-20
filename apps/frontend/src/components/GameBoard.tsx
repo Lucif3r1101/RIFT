@@ -806,35 +806,26 @@ function TabletopBoard(props: GameBoardProps) {
                         return <div key={`ez-${i}`} className="bf-zone bf-zone-empty" aria-hidden="true" />;
                       }
                       const { owner, unit } = slot;
-                      const inDef = unit.position === "defense";
-                      // Opponent's Set (defense) units are face-down: identity and
-                      // stats hidden until they are attacked/flipped.
-                      const faceDown = inDef;
+                      // Every enemy unit looks identical regardless of battle
+                      // position — the opponent must NOT be able to tell which
+                      // units are in Attack vs Defense, so they attack blind and
+                      // only discover the consequence after striking.
                       const fxClass = fx?.id === unit.instanceId ? `fx-${fx.kind}` : "";
                       return (
                         <div key={unit.instanceId} className="bf-zone">
                           <button
                             data-cardid={unit.instanceId}
-                            className={`tcg-card tcg-enemy rarity-${unit.rarity} ${faceDown ? "tcg-facedown" : "stance-attack"} ${attacker ? "tcg-target" : ""} ${fxClass}`}
+                            className={`tcg-card tcg-enemy rarity-${unit.rarity} stance-attack ${attacker ? "tcg-target" : ""} ${fxClass}`}
                             type="button"
                             disabled={!attacker}
                             onClick={() => strikeUnit(owner.userId, unit.instanceId)}
-                            title={faceDown ? `Set card — ${owner.username}` : `${unit.name} — ${owner.username} · Attack`}
+                            title={`${unit.name} — ${owner.username}`}
                           >
-                            {faceDown ? (
-                              <>
-                                <img className="tcg-art" src={CARD_BACK_ASSET_PATH} alt="" aria-hidden="true" />
-                                <span className="tcg-name">Set</span>
-                              </>
-                            ) : (
-                              <>
-                                <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
-                                <span className="tcg-name">{unit.name}</span>
-                                <span className="tcg-atk">{unit.attack}</span>
-                                <span className="tcg-def">{unit.health}</span>
-                                <span className="card-info-btn" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setDetailCard(unit); }}>ⓘ</span>
-                              </>
-                            )}
+                            <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
+                            <span className="tcg-name">{unit.name}</span>
+                            <span className="tcg-atk">{unit.attack}</span>
+                            <span className="tcg-def">{unit.health}</span>
+                            <span className="card-info-btn" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setDetailCard(unit); }}>ⓘ</span>
                             {fxClass ? <span className="fx-overlay" aria-hidden="true" /> : null}
                           </button>
                         </div>
