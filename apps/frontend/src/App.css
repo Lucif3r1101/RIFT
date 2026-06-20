@@ -4682,3 +4682,46 @@ body {
   background: linear-gradient(130deg, var(--accent), var(--accent-2));
   border-color: transparent;
 }
+
+/* ===== Card type / stance color coding ===== */
+.tcg-card.stance-attack::before,
+.tcg-card.stance-defense::before,
+.hand-row .hand-card.card-unit::before,
+.hand-row .hand-card.card-spell::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 3;
+}
+.tcg-card { position: relative; }
+.hand-row .hand-card { position: relative; overflow: hidden; }
+
+.tcg-card.stance-attack::before { background: linear-gradient(90deg, #ff7a59, #ff4d6d); }
+.tcg-card.stance-defense::before { background: linear-gradient(90deg, #60adff, #8ce8ff); }
+.hand-row .hand-card.card-unit::before { background: linear-gradient(90deg, #ff7a59, #ffb27a); }
+.hand-row .hand-card.card-spell::before { background: linear-gradient(90deg, #c182ff, #8a5cff); }
+
+/* spell hand cards get a violet wash so they read as "different" */
+.hand-row .hand-card.card-spell {
+  background: linear-gradient(180deg, rgba(40, 20, 60, 0.9), rgba(20, 12, 30, 0.92));
+}
+
+/* Legend */
+.type-legend {
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.lg {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+.lg-atk { color: #ff8d6e; border-color: rgba(255, 122, 89, 0.5); }
+.lg-def { color: #8ce8ff; border-color: rgba(96, 173, 255, 0.5); }
+.lg-spell { color: #c182ff; border-color: rgba(193, 130, 255, 0.5); }

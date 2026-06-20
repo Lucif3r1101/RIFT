@@ -695,7 +695,7 @@ function TabletopBoard(props: GameBoardProps) {
                       return (
                         <div key={unit.instanceId} className="bf-zone">
                           <button
-                            className={`tcg-card tcg-enemy rarity-${unit.rarity} ${faceDown ? "tcg-facedown" : ""} ${attacker ? "tcg-target" : ""} ${fxClass}`}
+                            className={`tcg-card tcg-enemy rarity-${unit.rarity} ${faceDown ? "tcg-facedown" : "stance-attack"} ${attacker ? "tcg-target" : ""} ${fxClass}`}
                             type="button"
                             disabled={!attacker}
                             onClick={() => strikeUnit(owner.userId, unit.instanceId)}
@@ -740,7 +740,7 @@ function TabletopBoard(props: GameBoardProps) {
                       return (
                         <div key={unit.instanceId} className="bf-zone tcg-slot">
                           <div
-                            className={`tcg-card tcg-mine rarity-${unit.rarity} ${inDef ? "tcg-defense" : ""} ${selected ? "tcg-selected" : ""} ${canAct ? "tcg-canact" : ""} ${fxClass}`}
+                            className={`tcg-card tcg-mine rarity-${unit.rarity} ${inDef ? "tcg-defense stance-defense" : "stance-attack"} ${selected ? "tcg-selected" : ""} ${canAct ? "tcg-canact" : ""} ${fxClass}`}
                             role="button"
                             tabIndex={0}
                             onClick={() => {
@@ -801,7 +801,12 @@ function TabletopBoard(props: GameBoardProps) {
             <div className="your-hand">
               <header className="field-head">
                 <strong>Your Hand</strong>
-                <span className="muted">{privateHand.length} card(s) · ◆ {me ? `${me.mana}/${me.maxMana}` : "--"}</span>
+                <span className="type-legend">
+                  <span className="lg lg-atk">Attack</span>
+                  <span className="lg lg-def">Defense</span>
+                  <span className="lg lg-spell">Spell</span>
+                </span>
+                <span className="muted">{privateHand.length} · ◆ {me ? `${me.mana}/${me.maxMana}` : "--"}</span>
               </header>
               <div className="hand-row">
                 {privateHand.length === 0 ? <p className="muted">No cards in hand.</p> : null}
@@ -811,7 +816,7 @@ function TabletopBoard(props: GameBoardProps) {
                   const playable = isMyTurn && affordable;
                   const reason = !isMyTurn ? "Wait for your turn" : !affordable ? `Needs ${card.cost} mana` : "";
                   return (
-                    <article key={card.instanceId} className={`hand-card ${!affordable ? "hand-unaffordable" : ""} ${playable ? "hand-playable" : ""}`}>
+                    <article key={card.instanceId} className={`hand-card ${card.type === "spell" ? "card-spell" : "card-unit"} ${!affordable ? "hand-unaffordable" : ""} ${playable ? "hand-playable" : ""}`}>
                       <div className="hand-card-media">
                         <img className="hand-card-art" src={art.primary} alt={card.name} loading="lazy" onError={(e) => handleCardArtError(e, card.slug)} />
                         <span className={`hand-cost ${affordable ? "" : "hand-cost-short"}`} title="Mana cost">{card.cost}</span>
