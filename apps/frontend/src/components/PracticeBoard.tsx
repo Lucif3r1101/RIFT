@@ -37,6 +37,7 @@ type ApiCard = {
   cost: number;
   attack: number;
   health: number;
+  targetMode?: string;
 };
 
 const START_HP = 20;
@@ -66,7 +67,8 @@ function toRoomCard(card: ApiCard, owner: string, n: number): RoomCard {
     health: card.health,
     canAttack: false,
     position: "attack",
-    positionChanged: false
+    positionChanged: false,
+    targetMode: card.targetMode ?? "all_opponents"
   };
 }
 
@@ -329,8 +331,12 @@ export function PracticeBoard({ onExit }: { onExit: () => void }) {
           if (card.type === "unit") {
             s.you.board.push({ ...card, position: position ?? "attack", canAttack: false, positionChanged: false });
           } else {
-            // simple spell: 2 damage to the bot, then the spell stays in your spell zone
-            s.bot.health = Math.max(0, s.bot.health - 2);
+            // spell: self-target heals you, otherwise it hits the bot; then it stays in your spell zone
+            if (card.targetMode === "self") {
+              s.you.health = Math.min(START_HP, s.you.health + 2);
+            } else {
+              s.bot.health = Math.max(0, s.bot.health - 2);
+            }
             if (s.you.spellZone.length < 5) s.you.spellZone.push(card);
             else s.you.discard.push(card);
           }

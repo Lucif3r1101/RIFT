@@ -81,6 +81,8 @@ type RoomCard = {
   position: "attack" | "defense";
   // True once a unit has changed position this turn (one change per turn).
   positionChanged: boolean;
+  // Where this card's effect aims (mainly for spells): self vs opponents.
+  targetMode?: string;
 };
 
 type RoomBattleState = {
@@ -354,7 +356,8 @@ function buildFactionDeck(factionId: string): RoomCard[] {
     health: card.health,
     canAttack: false,
     position: "attack" as const,
-    positionChanged: false
+    positionChanged: false,
+    targetMode: CARD_EFFECTS_BY_SLUG.get(card.slug)?.targetMode ?? "all_opponents"
   }));
 
   return shuffleCards(cards);
