@@ -49,29 +49,58 @@ export function ForgotPasswordModal(props: ForgotPasswordModalProps) {
     return null;
   }
 
-  return (
-    <div className="legal-overlay" role="dialog" aria-modal="true">
-      <div className="legal-card">
-        <h3>{step === "request" ? "Reset your password" : "Set a new password"}</h3>
+  const isRequest = step === "request";
 
-        {step === "request" ? (
-          <div className="grid">
+  return (
+    <div className="legal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
+      <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="auth-modal-head">
+          <div>
+            <span className="auth-hero-kicker">Account recovery</span>
+            <h3>{isRequest ? "Reset your password" : "Set a new password"}</h3>
+          </div>
+          <button className="icon-close" type="button" onClick={onClose} aria-label="Close">×</button>
+        </div>
+
+        <p className="auth-hint">
+          {isRequest
+            ? "Enter your account email and we'll send a reset link. Open it on this device to continue."
+            : "Paste the token from your email (or use the emailed link) and choose a new password."}
+        </p>
+
+        {isRequest ? (
+          <div className="auth-form">
             <label className="label">
               Account Email
-              <input className="input" value={email} onChange={(e) => onEmailChange(e.target.value)} type="email" />
+              <input
+                className="input"
+                value={email}
+                onChange={(e) => onEmailChange(e.target.value)}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+              />
             </label>
-            <button className="button primary" type="button" onClick={onRequestReset}>
-              Send Reset Token
+            <button className="button primary auth-submit" type="button" onClick={onRequestReset}>
+              Send Reset Link
             </button>
-            <button className="button" type="button" onClick={() => onChangeStep("reset")}>
-              I already have a token
-            </button>
+            <p className="auth-switch">
+              Already have a token?{" "}
+              <button type="button" className="link" onClick={() => onChangeStep("reset")}>Enter it</button>
+            </p>
           </div>
         ) : (
-          <div className="grid">
+          <div className="auth-form">
             <label className="label">
               Reset Token
-              <input className="input" value={token} onChange={(e) => onTokenChange(e.target.value)} type="text" />
+              <input
+                className="input"
+                value={token}
+                onChange={(e) => onTokenChange(e.target.value)}
+                type="text"
+                placeholder="Paste your reset token"
+              />
             </label>
             <label className="label">
               New Password
@@ -81,8 +110,10 @@ export function ForgotPasswordModal(props: ForgotPasswordModalProps) {
                   value={password}
                   onChange={(e) => onPasswordChange(e.target.value)}
                   type={passwordVisible ? "text" : "password"}
+                  autoComplete="new-password"
+                  placeholder="••••••••"
                 />
-                <button className="peek" type="button" onClick={onTogglePasswordVisible}>
+                <button className="peek" type="button" onClick={onTogglePasswordVisible} aria-label={passwordVisible ? "Hide password" : "Show password"}>
                   {passwordVisible ? "Hide" : "Show"}
                 </button>
               </div>
@@ -95,27 +126,26 @@ export function ForgotPasswordModal(props: ForgotPasswordModalProps) {
                   value={confirmPassword}
                   onChange={(e) => onConfirmPasswordChange(e.target.value)}
                   type={confirmVisible ? "text" : "password"}
+                  autoComplete="new-password"
+                  placeholder="Re-enter password"
                 />
-                <button className="peek" type="button" onClick={onToggleConfirmVisible}>
+                <button className="peek" type="button" onClick={onToggleConfirmVisible} aria-label={confirmVisible ? "Hide password" : "Show password"}>
                   {confirmVisible ? "Hide" : "Show"}
                 </button>
               </div>
             </label>
-            <p className="muted">Password must include uppercase, lowercase, number, and symbol.</p>
-            <button className="button primary" type="button" onClick={onSubmitReset}>
+            <p className="auth-hint">Must include uppercase, lowercase, a number, and a symbol.</p>
+            <button className="button primary auth-submit" type="button" onClick={onSubmitReset}>
               Update Password
             </button>
-            <button className="button" type="button" onClick={() => onChangeStep("request")}>
-              Back
-            </button>
+            <p className="auth-switch">
+              <button type="button" className="link" onClick={() => onChangeStep("request")}>← Back to email</button>
+            </p>
           </div>
         )}
 
         {error ? <p className="error">{error}</p> : null}
         {message ? <p className="good">{message}</p> : null}
-        <button className="button" type="button" onClick={onClose}>
-          Close
-        </button>
       </div>
     </div>
   );
