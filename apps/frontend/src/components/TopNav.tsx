@@ -83,24 +83,30 @@ export function TopNav({
               <nav className="drawer-items">
                 {showLogout ? (
                   <button className="nav-menu-item" type="button" role="menuitem" onClick={run(onOpenProfile)}>
-                    <img className="nav-icon" src={getIconAssetPath("icon-shield")} alt="" aria-hidden="true" />
-                    Profile{username ? ` · ${username}` : ""}
+                    <span className="nav-ico-chip"><img className="nav-icon" src={getIconAssetPath("icon-shield")} alt="" aria-hidden="true" /></span>
+                    <span className="nav-label">Profile{username ? ` · ${username}` : ""}</span>
                   </button>
                 ) : null}
                 <button className="nav-menu-item" type="button" role="menuitem" onClick={run(onOpenLore)}>
-                  <img className="nav-icon" src={getIconAssetPath("icon-spell")} alt="" aria-hidden="true" /> Lore
+                  <span className="nav-ico-chip"><img className="nav-icon" src={getIconAssetPath("icon-spell")} alt="" aria-hidden="true" /></span>
+                  <span className="nav-label">Lore</span>
                 </button>
                 <button className="nav-menu-item" type="button" role="menuitem" onClick={run(onOpenHow)}>
-                  <img className="nav-icon" src={getIconAssetPath("icon-unit")} alt="" aria-hidden="true" /> How to Play
+                  <span className="nav-ico-chip"><img className="nav-icon" src={getIconAssetPath("icon-unit")} alt="" aria-hidden="true" /></span>
+                  <span className="nav-label">How to Play</span>
                 </button>
                 <button className="nav-menu-item" type="button" role="menuitem" onClick={run(onOpenJourney)}>
-                  <img className="nav-icon" src={getIconAssetPath("icon-timer")} alt="" aria-hidden="true" /> Card Journey
+                  <span className="nav-ico-chip"><img className="nav-icon" src={getIconAssetPath("icon-timer")} alt="" aria-hidden="true" /></span>
+                  <span className="nav-label">Card Journey</span>
                 </button>
                 <button className="nav-menu-item" type="button" role="menuitem" onClick={run(onOpenLibrary)}>
-                  <img className="nav-icon" src={getIconAssetPath("icon-room")} alt="" aria-hidden="true" /> Card Library
+                  <span className="nav-ico-chip"><img className="nav-icon" src={getIconAssetPath("icon-room")} alt="" aria-hidden="true" /></span>
+                  <span className="nav-label">Card Library</span>
                 </button>
                 <button className="nav-menu-item" type="button" role="menuitem" onClick={run(onToggleSound)}>
-                  <img className="nav-icon" src={getIconAssetPath("icon-audio")} alt="" aria-hidden="true" /> Sound: {soundEnabled ? "On" : "Off"}
+                  <span className="nav-ico-chip"><img className="nav-icon" src={getIconAssetPath("icon-audio")} alt="" aria-hidden="true" /></span>
+                  <span className="nav-label">Sound</span>
+                  <span className="nav-state">{soundEnabled ? "On" : "Off"}</span>
                 </button>
               </nav>
 
