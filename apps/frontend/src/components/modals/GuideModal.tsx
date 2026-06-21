@@ -5,6 +5,7 @@ type GuideModalProps = {
   open: boolean;
   section: GuideSection;
   onClose: () => void;
+  onPlayIntro?: () => void;
 };
 
 const TITLES: Record<GuideSection, string> = {
@@ -16,7 +17,7 @@ const TITLES: Record<GuideSection, string> = {
 
 // Each guide section is now its own full screen (no sub-tabs). `section` decides
 // which screen is shown.
-export function GuideModal({ open, section, onClose }: GuideModalProps) {
+export function GuideModal({ open, section, onClose, onPlayIntro }: GuideModalProps) {
   if (!open) {
     return null;
   }
@@ -35,6 +36,11 @@ export function GuideModal({ open, section, onClose }: GuideModalProps) {
         <div className="info-body">
           {section === "lore" ? (
             <div className="guide-lore">
+              {onPlayIntro ? (
+                <button className="button nav-btn intro-replay-btn" type="button" onClick={onPlayIntro}>
+                  ▶ Watch intro
+                </button>
+              ) : null}
               {LORE_INTRO.map((para, i) => (
                 <p key={i}>{para}</p>
               ))}

@@ -12,6 +12,7 @@ import { RiftBackground } from "./components/RiftBackground";
 const RiftOrb = lazy(() => import("./components/RiftOrb").then((m) => ({ default: m.RiftOrb })));
 import { ForgotPasswordModal } from "./components/modals/ForgotPasswordModal";
 import { GuideModal } from "./components/modals/GuideModal";
+import { IntroVideoModal } from "./components/modals/IntroVideoModal";
 import { LegalModal } from "./components/modals/LegalModal";
 import { CHARACTER_CLASSES } from "./constants/game";
 import { DEFAULT_AVATAR_IDS, ONBOARDING_KEY, PASSWORD_RULE, SOCKET_URL, TOKEN_KEY } from "./constants/game";
@@ -82,6 +83,7 @@ export function App() {
   const [tabletopMode, setTabletopMode] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [introOpen, setIntroOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [practiceMode, setPracticeMode] = useState(false);
@@ -219,9 +221,10 @@ export function App() {
     if (localStorage.getItem(key)) {
       return;
     }
+    // First time this user reaches the app: play the intro trailer once.
+    // Marked seen immediately so it never auto-opens again (per design).
     localStorage.setItem(key, "1");
-    setGuideSection("lore");
-    setGuideOpen(true);
+    setIntroOpen(true);
   }, [currentUser?.id]);
 
   useEffect(() => {
@@ -778,7 +781,16 @@ export function App() {
           </div>
         ))}
       </div>
-      <GuideModal open={guideOpen} section={guideSection} onClose={() => setGuideOpen(false)} />
+      <GuideModal
+        open={guideOpen}
+        section={guideSection}
+        onClose={() => setGuideOpen(false)}
+        onPlayIntro={() => {
+          setGuideOpen(false);
+          setIntroOpen(true);
+        }}
+      />
+      <IntroVideoModal open={introOpen} onClose={() => setIntroOpen(false)} />
       {currentUser ? (
         <ProfileModal
           open={profileOpen}
