@@ -987,11 +987,13 @@ function TabletopBoard(props: GameBoardProps) {
                   <span><b className="seat-hp">❤ {me?.health ?? "--"}</b> <b className="seat-mana">◆ {me ? `${me.mana}/${me.maxMana}` : "--"}</b></span>
                 </div>
               </div>
-              {/* Mobile-only handle: tap to slide the hand drawer up/down. */}
-              <button className="dock-handle" type="button" onClick={() => setHandOpen((v) => !v)} aria-expanded={handOpen}>
-                🖐 Hand · {privateHand.length} {handOpen ? "▼" : "▲"}
-              </button>
             <div className="duel-piles">
+              {/* Mobile-only: Hand as a pile card (matches deck/graveyard). */}
+              <button className="pile pile-hand" type="button" onClick={() => setHandOpen(true)} title="Open your hand">
+                <img className="pile-art" src={CARD_BACK_ASSET_PATH} alt="" aria-hidden="true" />
+                <span className="pile-count">{privateHand.length}</span>
+                <span className="pile-label">Hand</span>
+              </button>
               <button
                 className={`pile pile-deck ${isMyTurn && !battle?.manualDrawUsed ? "pile-draw" : ""}`}
                 type="button"
