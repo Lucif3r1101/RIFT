@@ -553,9 +553,7 @@ function TabletopBoard(props: GameBoardProps) {
   }, [activePlayerId, battle, currentRoom?.status, activePlayerName, props.currentUserId]);
 
   const attacker = isMyTurn && selectedOwnBoardCard?.canAttack && selectedOwnBoardCard.position !== "defense" ? selectedOwnBoardCard : null;
-  const enemyUnits = opponents.flatMap((player) => player.board.map((unit) => ({ owner: player, unit })));
   const ZONES = 5;
-  const enemyZoneCount = Math.max(ZONES, enemyUnits.length);
   const myZoneCount = Math.max(ZONES, me?.board.length ?? 0);
   // Draw a glowing beam from the attacking card to whatever it's striking, so
   // it's always clear which unit is hitting which target.
@@ -819,40 +817,6 @@ function TabletopBoard(props: GameBoardProps) {
               </div>
             ) : null}
 
-            <div className="opp-strip">
-              {opponents.length === 0 ? <span className="muted">Waiting for opponents…</span> : null}
-              {opponents.map((player) => {
-                const targetable = Boolean(attacker) && player.health > 0;
-                const isTurn = player.userId === activePlayerId;
-                return (
-                  <div key={player.userId} className="plate-wrap">
-                    <button
-                      data-plateid={player.userId}
-                      className={`plate ${isTurn ? "plate-turn" : ""} ${targetable ? "plate-target" : ""} ${fx?.id === `player-${player.userId}` ? "fx-slash" : ""}`}
-                      type="button"
-                      disabled={!targetable}
-                      onClick={() => strikePlayer(player.userId, player.health)}
-                      title={targetable ? `Attack ${player.username}` : player.username}
-                    >
-                      <img className="plate-avatar" src={getAvatarAssetPath(player.avatarId)} alt="" onError={(e) => handleAvatarError(e, player.avatarId)} />
-                      <span className="plate-name">{player.username}</span>
-                      <span className="plate-stats"><b key={`hp-${player.health}`} className="plate-hp hp-pop">❤ {player.health}</b> ◆ {player.mana}/{player.maxMana}</span>
-                      {fx?.id === `player-${player.userId}` ? <span className="fx-overlay" aria-hidden="true" /> : null}
-                    </button>
-                    <div className="opp-hand" aria-label={`${player.username} has ${player.handCount} cards`}>
-                      {Array.from({ length: Math.min(player.handCount, 8) }).map((_, h) => (
-                        <img key={h} className="opp-hand-card" src={CARD_BACK_ASSET_PATH} alt="" aria-hidden="true" />
-                      ))}
-                      <span className="opp-hand-count">{player.handCount}</span>
-                    </div>
-                    <button className="grave-chip" type="button" onClick={() => setGraveyardOwner(player.userId)} title={`View ${player.username}'s graveyard`}>
-                      🪦 {player.discardCount}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
             <div
               className={`battlefield ${attacker ? "bf-attacking" : ""} ${shake ? "bf-shake" : ""} ${isMyTurn ? "bf-myturn" : ""}`}
               style={{ ["--realm-bg" as string]: `url(${realmBg})` }}
@@ -869,43 +833,58 @@ function TabletopBoard(props: GameBoardProps) {
                 ))}
               </div>
               <div className="bf-plane">
-                <div className="bf-row bf-enemy">
-                  <span className="bf-zone-label">Enemy Field {attacker ? "· tap a target" : ""}</span>
-                  <div className="bf-zones">
-                    {Array.from({ length: enemyZoneCount }).map((_, i) => {
-                      const slot = enemyUnits[i];
-                      if (!slot) {
-                        return <div key={`ez-${i}`} className="bf-zone bf-zone-empty" aria-hidden="true" />;
-                      }
-                      const { owner, unit } = slot;
-                      // Every enemy unit looks identical regardless of battle
-                      // position — the opponent must NOT be able to tell which
-                      // units are in Attack vs Defense, so they attack blind and
-                      // only discover the consequence after striking.
-                      const fxClass = fx?.id === unit.instanceId ? `fx-${fx.kind}` : "";
-                      return (
-                        <div key={unit.instanceId} className="bf-zone">
-                          <button
-                            data-cardid={unit.instanceId}
-                            className={`tcg-card tcg-enemy rarity-${unit.rarity} stance-attack ${attacker ? "tcg-target" : ""} ${fxClass}`}
-                            type="button"
-                            disabled={!attacker}
-                            onClick={() => strikeUnit(owner.userId, unit.instanceId)}
-                            title={`${unit.name} — ${owner.username}`}
-                          >
-                            <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
-                            {getCrestSource(unit.slug) ? <img className="tcg-crest" src={getCrestSource(unit.slug)} alt="" aria-hidden="true" /> : null}
-                            <span className="tcg-frame" aria-hidden="true" />
-                            <span className="tcg-name">{unit.name}</span>
-                            <span className="tcg-atk">{unit.attack}</span>
-                            <span className="tcg-def">{unit.health}</span>
-                            <span className="card-info-btn" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setDetailCard(unit); }}>ⓘ</span>
-                            {fxClass ? <span className="fx-overlay" aria-hidden="true" /> : null}
-                          </button>
+                <div className="bf-enemy-seats">
+                  {opponents.length === 0 ? <span className="muted bf-zone-label">Waiting for opponents…</span> : null}
+                  {opponents.map((player) => {
+                    const targetable = Boolean(attacker) && player.health > 0;
+                    const isTurn = player.userId === activePlayerId;
+                    return (
+                      <div key={player.userId} className={`enemy-seat ${isTurn ? "enemy-seat-turn" : ""}`}>
+                        <button
+                          data-plateid={player.userId}
+                          className={`seat-plate ${targetable ? "plate-target" : ""} ${fx?.id === `player-${player.userId}` ? "fx-slash" : ""}`}
+                          type="button"
+                          disabled={!targetable}
+                          onClick={() => strikePlayer(player.userId, player.health)}
+                          title={targetable ? `Attack ${player.username}` : player.username}
+                        >
+                          <img className="seat-avatar" src={getAvatarAssetPath(player.avatarId)} alt="" onError={(e) => handleAvatarError(e, player.avatarId)} />
+                          <span className="seat-name">{player.username}</span>
+                          <span className="seat-stats"><b className="plate-hp">❤ {player.health}</b> <b className="seat-mana">◆ {player.mana}/{player.maxMana}</b></span>
+                          <span className="seat-meta">🖐 {player.handCount}</span>
+                          {fx?.id === `player-${player.userId}` ? <span className="fx-overlay" aria-hidden="true" /> : null}
+                        </button>
+                        <button className="grave-chip seat-grave" type="button" onClick={() => setGraveyardOwner(player.userId)} title={`${player.username}'s graveyard`}>🪦 {player.discardCount}</button>
+                        <div className="enemy-seat-field bf-zones">
+                          {player.board.length === 0 ? <span className="seat-empty">— no units —</span> : null}
+                          {player.board.map((unit) => {
+                            const fxClass = fx?.id === unit.instanceId ? `fx-${fx.kind}` : "";
+                            return (
+                              <div key={unit.instanceId} className="bf-zone">
+                                <button
+                                  data-cardid={unit.instanceId}
+                                  className={`tcg-card tcg-enemy rarity-${unit.rarity} stance-attack ${attacker ? "tcg-target" : ""} ${fxClass}`}
+                                  type="button"
+                                  disabled={!attacker}
+                                  onClick={() => strikeUnit(player.userId, unit.instanceId)}
+                                  title={`${unit.name} — ${player.username}`}
+                                >
+                                  <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
+                                  {getCrestSource(unit.slug) ? <img className="tcg-crest" src={getCrestSource(unit.slug)} alt="" aria-hidden="true" /> : null}
+                                  <span className="tcg-frame" aria-hidden="true" />
+                                  <span className="tcg-name">{unit.name}</span>
+                                  <span className="tcg-atk">{unit.attack}</span>
+                                  <span className="tcg-def">{unit.health}</span>
+                                  <span className="card-info-btn" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setDetailCard(unit); }}>ⓘ</span>
+                                  {fxClass ? <span className="fx-overlay" aria-hidden="true" /> : null}
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="bf-line"><span>⚔ RIFT ⚔</span></div>

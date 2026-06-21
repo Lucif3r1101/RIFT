@@ -4428,6 +4428,57 @@ body {
   background-image: linear-gradient(180deg, rgba(255, 80, 120, 0.1), rgba(255, 80, 120, 0.02));
   border-color: rgba(255, 99, 132, 0.3);
 }
+
+/* Free-for-all: each opponent gets their own seat + field across the top. */
+.bf-enemy-seats {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding: 0.3rem;
+  overflow: auto;
+}
+.enemy-seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 80, 120, 0.1), rgba(255, 80, 120, 0.02));
+  border: 1px solid rgba(255, 99, 132, 0.25);
+}
+.enemy-seat-turn { border-color: rgba(255, 196, 84, 0.7); box-shadow: 0 0 12px rgba(255, 196, 84, 0.3); }
+.seat-plate {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: default;
+  padding: 0.2rem;
+}
+.seat-plate.plate-target { cursor: crosshair; }
+.seat-plate.plate-target:hover { filter: brightness(1.12); }
+.seat-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(221, 178, 105, 0.5); }
+.seat-name { font-weight: 700; font-size: 0.8rem; }
+.seat-stats { font-size: 0.78rem; }
+.seat-stats .plate-hp { color: #ff8da3; }
+.seat-stats .seat-mana { color: #8ce8ff; margin-left: 0.3rem; }
+.seat-meta { font-size: 0.7rem; color: var(--muted); }
+.seat-grave { font-size: 0.7rem; padding: 0.15rem 0.5rem; }
+.enemy-seat-field {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 280px;
+}
+.seat-empty { color: var(--muted); font-size: 0.7rem; font-style: italic; padding: 0.3rem; }
 .bf-you {
   background-image: linear-gradient(180deg, rgba(53, 243, 177, 0.04), rgba(53, 243, 177, 0.12));
   border-color: rgba(53, 243, 177, 0.32);
@@ -5214,7 +5265,13 @@ body {
   .bf-zone { width: 78px; min-height: 106px; }
   .bf-enemy .bf-zone { width: 74px; min-height: 100px; }
   .bf-zone-label { font-size: 0.58rem; }
-  .duel > .opp-strip { overflow-x: auto; flex-wrap: nowrap; }
+  /* Enemy seats: horizontal-scroll row of compact seats on phones. */
+  .bf-enemy-seats { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; gap: 0.4rem; }
+  .enemy-seat { flex: 0 0 auto; padding: 0.3rem; }
+  .seat-avatar { width: 32px; height: 32px; }
+  .seat-name { font-size: 0.72rem; }
+  .enemy-seat-field { max-width: 170px; }
+  .enemy-seat-field.bf-zones { flex: none; overflow: visible; align-content: center; }
 
   /* Slim seat bar always visible: avatar + Hand handle + deck/graveyard. */
   .duel-dock { display: flex; align-items: center; gap: 0.5rem; }
