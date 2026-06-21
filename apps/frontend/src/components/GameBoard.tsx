@@ -350,6 +350,15 @@ function TabletopBoard(props: GameBoardProps) {
   const [handOpen, setHandOpen] = useState(false);
   // Collapsible top bar so the essentials stay readable, details on demand.
   const [statusOpen, setStatusOpen] = useState(false);
+  // Wide screens get the radial round table; narrow/portrait keeps the stacked board.
+  const [wideTable, setWideTable] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 900px)");
+    const onChange = () => setWideTable(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
   const [selectedBoardCardId, setSelectedBoardCardId] = useState<string | null>(null);
   const [hoveredTargetPlayerId, setHoveredTargetPlayerId] = useState<string | null>(null);
   const [actionHistory, setActionHistory] = useState<RoomActionEvent[]>([]);
@@ -635,6 +644,77 @@ function TabletopBoard(props: GameBoardProps) {
       ? "Play cards, then tap a unit to attack. End Turn when done."
       : "Sit tight until it's your turn.";
 
+  // Reusable card renderers (used by both the stacked board and the wide round table).
+  const renderEnemyUnit = (player: RoomState["players"][number], unit: RoomCard) => {
+    const fxClass = fx?.id === unit.instanceId ? `fx-${fx.kind}` : "";
+    return (
+      <div key={unit.instanceId} className="bf-zone">
+        <button
+          data-cardid={unit.instanceId}
+          className={`tcg-card tcg-enemy rarity-${unit.rarity} stance-attack ${attacker ? "tcg-target" : ""} ${fxClass}`}
+          type="button"
+          disabled={!attacker}
+          onClick={() => strikeUnit(player.userId, unit.instanceId)}
+          title={`${unit.name} — ${player.username}`}
+        >
+          <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
+          {getCrestSource(unit.slug) ? <img className="tcg-crest" src={getCrestSource(unit.slug)} alt="" aria-hidden="true" /> : null}
+          <span className="tcg-frame" aria-hidden="true" />
+          <span className="tcg-name">{unit.name}</span>
+          <span className="tcg-atk">{unit.attack}</span>
+          <span className="tcg-def">{unit.health}</span>
+          <span className="card-info-btn" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setDetailCard(unit); }}>ⓘ</span>
+          {fxClass ? <span className="fx-overlay" aria-hidden="true" /> : null}
+        </button>
+      </div>
+    );
+  };
+  const renderMyUnit = (unit: RoomCard) => {
+    const inDef = unit.position === "defense";
+    const canAct = isMyTurn && unit.canAttack && !inDef;
+    const selected = unit.instanceId === selectedBoardCardId;
+    const canFlip = isMyTurn && !unit.positionChanged;
+    const fxClass = fx?.id === unit.instanceId ? `fx-${fx.kind}` : "";
+    return (
+      <div key={unit.instanceId} className="bf-zone tcg-slot">
+        <div
+          data-cardid={unit.instanceId}
+          className={`tcg-card tcg-mine rarity-${unit.rarity} ${inDef ? "tcg-defense stance-defense" : "stance-attack"} ${selected ? "tcg-selected" : ""} ${canAct ? "tcg-canact" : ""} ${fxClass} ${unit.instanceId === lungeId ? "tcg-lunge" : ""} ${unit.instanceId === flipId ? "tcg-flip" : ""}`}
+          role="button"
+          tabIndex={0}
+          onClick={() => { if (canAct) setSelectedBoardCardId(selected ? null : unit.instanceId); }}
+          title={`${unit.name} · ${inDef ? "Defense" : "Attack"}`}
+        >
+          <img className="tcg-art" src={getCardArtSources(unit.slug).primary} alt={unit.name} loading="lazy" onError={(e) => handleCardArtError(e, unit.slug)} />
+          {getCrestSource(unit.slug) ? <img className="tcg-crest" src={getCrestSource(unit.slug)} alt="" aria-hidden="true" /> : null}
+          <span className="tcg-frame" aria-hidden="true" />
+          <span className="tcg-name">{unit.name}</span>
+          <span className="tcg-atk">{unit.attack}</span>
+          <span className="tcg-def">{unit.health}</span>
+          {inDef ? <span className="tcg-pos">🛡</span> : null}
+          {canAct ? <span className="tcg-ready">●</span> : null}
+          <span className="card-info-btn" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setDetailCard(unit); }}>ⓘ</span>
+          {fxClass ? <span className="fx-overlay" aria-hidden="true" /> : null}
+        </div>
+        {canFlip ? (
+          <button className={`flip-btn ${inDef ? "to-attack" : "to-defend"}`} type="button" onClick={() => { setFlipId(unit.instanceId); window.setTimeout(() => setFlipId(null), 450); onSetPosition(unit.instanceId, inDef ? "attack" : "defense"); }} title="Change battle position (once per turn)">
+            ⟳ {inDef ? "To Attack" : "To Defense"}
+          </button>
+        ) : null}
+      </div>
+    );
+  };
+
+  // Round-table seat positions: YOU at the bottom, opponents spread evenly around.
+  const totalSeats = opponents.length + 1;
+  const seatPos = (index: number) => {
+    const angle = (90 + index * (360 / totalSeats)) * (Math.PI / 180);
+    return {
+      left: `${50 + 38 * Math.cos(angle)}%`,
+      top: `${50 + 40 * Math.sin(angle)}%`
+    };
+  };
+
   return (
     <div className="grid">
       {clash ? (
@@ -832,6 +912,41 @@ function TabletopBoard(props: GameBoardProps) {
                   <span key={sig.id} className="destroy-pop">💥 {sig.cardName} destroyed</span>
                 ))}
               </div>
+              {wideTable ? (
+                <div className="round-table">
+                  <div className="rt-core" aria-hidden="true"><span>⚔ RIFT ⚔</span></div>
+                  {opponents.map((player, oi) => {
+                    const targetable = Boolean(attacker) && player.health > 0;
+                    const isTurn = player.userId === activePlayerId;
+                    return (
+                      <div key={player.userId} className={`rt-seat ${isTurn ? "rt-seat-turn" : ""}`} style={seatPos(oi + 1)}>
+                        <button
+                          data-plateid={player.userId}
+                          className={`seat-plate ${targetable ? "plate-target" : ""} ${fx?.id === `player-${player.userId}` ? "fx-slash" : ""}`}
+                          type="button"
+                          disabled={!targetable}
+                          onClick={() => strikePlayer(player.userId, player.health)}
+                          title={targetable ? `Attack ${player.username}` : player.username}
+                        >
+                          <img className="seat-avatar" src={getAvatarAssetPath(player.avatarId)} alt="" onError={(e) => handleAvatarError(e, player.avatarId)} />
+                          <span className="seat-name">{player.username}</span>
+                          <span className="seat-stats"><b className="plate-hp">❤ {player.health}</b> <b className="seat-mana">◆ {player.mana}/{player.maxMana}</b></span>
+                          <span className="seat-meta">🖐 {player.handCount} · 🪦 {player.discardCount}</span>
+                          {fx?.id === `player-${player.userId}` ? <span className="fx-overlay" aria-hidden="true" /> : null}
+                        </button>
+                        <div className="rt-field bf-zones">
+                          {player.board.length === 0 ? <span className="seat-empty">— no units —</span> : player.board.map((u) => renderEnemyUnit(player, u))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="rt-seat rt-seat-you" style={seatPos(0)}>
+                    <div className="rt-field bf-zones">
+                      {me && me.board.length > 0 ? me.board.map((u) => renderMyUnit(u)) : <span className="seat-empty">summon units to fight</span>}
+                    </div>
+                  </div>
+                </div>
+              ) : (
               <div className="bf-plane">
                 <div className="bf-enemy-seats">
                   {opponents.length === 0 ? <span className="muted bf-zone-label">Waiting for opponents…</span> : null}
@@ -936,6 +1051,7 @@ function TabletopBoard(props: GameBoardProps) {
                   </div>
                 </div>
               </div>
+              )}
             </div>
 
             {(() => {
