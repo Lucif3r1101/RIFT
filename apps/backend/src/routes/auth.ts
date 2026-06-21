@@ -6,6 +6,7 @@ import { z } from "zod";
 import { UserModel } from "../models/User.js";
 import { signAuthToken } from "../utils.auth.js";
 import { requireAuth } from "../middleware/auth.js";
+import { isAdminEmail } from "../isAdmin.js";
 import { grantStarterSetForUser } from "../services/starterSetup.js";
 import { sendPasswordResetEmail } from "../services/email.js";
 
@@ -100,7 +101,8 @@ export function buildAuthRouter(jwtSecret: string): Router {
         id: user.id,
         email: user.email,
         username: user.username,
-        avatarId: user.avatarId
+        avatarId: user.avatarId,
+        isAdmin: isAdminEmail(user.email)
       }
     });
   });
@@ -134,7 +136,8 @@ export function buildAuthRouter(jwtSecret: string): Router {
         id: user.id,
         email: user.email,
         username: user.username,
-        avatarId: user.avatarId
+        avatarId: user.avatarId,
+        isAdmin: isAdminEmail(user.email)
       }
     });
   });
@@ -227,7 +230,8 @@ export function buildAuthRouter(jwtSecret: string): Router {
         id: user.id,
         email: user.email,
         username: user.username,
-        avatarId: user.avatarId
+        avatarId: user.avatarId,
+        isAdmin: isAdminEmail(user.email)
       }
     });
   });
@@ -262,7 +266,7 @@ export function buildAuthRouter(jwtSecret: string): Router {
     await user.save();
 
     res.json({
-      user: { id: user.id, email: user.email, username: user.username, avatarId: user.avatarId }
+      user: { id: user.id, email: user.email, username: user.username, avatarId: user.avatarId, isAdmin: isAdminEmail(user.email) }
     });
   });
 

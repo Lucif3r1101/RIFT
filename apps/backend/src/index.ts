@@ -55,7 +55,7 @@ app.use("/auth", authLimiter, buildAuthRouter(jwtSecret));
 app.use("/cards", buildCardsRouter());
 app.use("/decks", buildDecksRouter(jwtSecret));
 app.use("/matches", buildMatchesRouter(jwtSecret));
-app.use("/stats", buildStatsRouter());
+app.use("/stats", buildStatsRouter(jwtSecret));
 
 const server = createServer(app);
 

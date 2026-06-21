@@ -6,6 +6,7 @@ export type AuthUser = {
   email: string;
   username: string;
   avatarId: string;
+  isAdmin?: boolean;
 };
 
 export type AuthResponse = {

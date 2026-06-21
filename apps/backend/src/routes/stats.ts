@@ -1,17 +1,18 @@
 import { Router } from "express";
 import { GameEventModel } from "../models/GameEvent.js";
 import { UserModel } from "../models/User.js";
+import { requireAuth } from "../middleware/auth.js";
+import { isAdminEmail } from "../isAdmin.js";
 
-// Analytics dashboard data. Protected by a shared secret: set STATS_KEY in the
-// environment and pass it as ?key=... (kept simple — this is owner-only data,
-// not a public endpoint). If STATS_KEY is unset, access is allowed (dev only).
-export function buildStatsRouter(): Router {
+// Analytics dashboard data — owner-only. Requires a valid login (JWT) AND the
+// account's email to be in ADMIN_EMAILS. No shared key, nothing public.
+export function buildStatsRouter(jwtSecret: string): Router {
   const router = Router();
-  const STATS_KEY = process.env.STATS_KEY;
 
-  router.get("/", async (req, res) => {
-    if (STATS_KEY && req.query.key !== STATS_KEY) {
-      return res.status(401).json({ error: "Unauthorized." });
+  router.get("/", requireAuth(jwtSecret), async (req, res) => {
+    const viewer = await UserModel.findById(req.authUserId);
+    if (!viewer || !isAdminEmail(viewer.email)) {
+      return res.status(403).json({ error: "Admins only." });
     }
 
     const since = (() => {

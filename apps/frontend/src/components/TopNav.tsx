@@ -5,6 +5,8 @@ type TopNavProps = {
   soundEnabled: boolean;
   showLogout: boolean;
   username?: string;
+  isAdmin?: boolean;
+  onOpenStats?: () => void;
   onOpenLore: () => void;
   onOpenHow: () => void;
   onOpenJourney: () => void;
@@ -19,6 +21,8 @@ export function TopNav({
   soundEnabled,
   showLogout,
   username,
+  isAdmin,
+  onOpenStats,
   onOpenLore,
   onOpenHow,
   onOpenJourney,
@@ -109,6 +113,12 @@ export function TopNav({
                   <span className="nav-ico-chip"><img className="nav-icon" src={getIconAssetPath("icon-shield")} alt="" aria-hidden="true" /></span>
                   <span className="nav-label">About the Dev</span>
                 </button>
+                {isAdmin && onOpenStats ? (
+                  <button className="nav-menu-item" type="button" role="menuitem" onClick={run(onOpenStats)}>
+                    <span className="nav-ico-chip"><img className="nav-icon" src={getIconAssetPath("icon-timer")} alt="" aria-hidden="true" /></span>
+                    <span className="nav-label">Analytics</span>
+                  </button>
+                ) : null}
                 <button className="nav-menu-item" type="button" role="menuitem" onClick={run(onToggleSound)}>
                   <span className="nav-ico-chip"><img className="nav-icon" src={getIconAssetPath("icon-audio")} alt="" aria-hidden="true" /></span>
                   <span className="nav-label">Sound</span>
