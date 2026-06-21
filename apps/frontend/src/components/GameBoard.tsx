@@ -391,7 +391,6 @@ function TabletopBoard(props: GameBoardProps) {
   // any of their cards' slugs), falling back to neutral arena key art.
   const realmSlug = privateHand[0]?.slug ?? me?.board[0]?.slug ?? "";
   const realmBg = getRealmSource(realmSlug) || "/assets/branding/hero-key-art.jpg";
-  const possibleTargets = opponents.filter((player) => player.health > 0);
   const activePlayerName = activePlayerId
     ? currentRoom?.players.find((player) => player.userId === activePlayerId)?.username ?? "Player"
     : null;
@@ -1017,29 +1016,17 @@ function TabletopBoard(props: GameBoardProps) {
                         )}
                       </div>
                       <strong>{card.name}</strong>
-                      <span className="hand-card-desc">{card.description}</span>
+                      <span className="hand-card-desc">{card.type === "spell" && card.spellText ? card.spellText : card.description}</span>
                       <div className="row">
                         {card.type === "unit" ? (
                           <div className="play-stance">
                             <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId, undefined, "attack")} title="Summon in Attack position (uses ATK)">⚔ Summon</button>
                             <button className="button hand-play-btn button-secondary" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId, undefined, "defense")} title="Set in Defense position (uses DEF, guards you)">🛡 Set</button>
                           </div>
-                        ) : card.targetMode === "self" ? (
-                          <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId, props.currentUserId)} title="Cast on yourself">✦ Cast on Yourself</button>
-                        ) : card.targetMode === "single_opponent" ? (
-                          possibleTargets.length === 0 ? (
-                            <button className="button hand-play-btn" type="button" disabled>No target</button>
-                          ) : (
-                            possibleTargets.map((target) => (
-                              <button key={`${card.instanceId}-${target.userId}`} className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId, target.userId)} title={`Cast at ${target.username}`}>
-                                🎯 Cast at {target.username}
-                              </button>
-                            ))
-                          )
                         ) : (
-                          // all_opponents / random_opponent — no manual target needed
-                          <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId, possibleTargets[0]?.userId)} title="Cast (hits all/every opponent)">
-                            ✦ Cast {card.targetMode === "all_opponents" ? "(all enemies)" : ""}
+                          // Spells auto-resolve (e.g. hit the strongest enemy unit) — one clear Cast button.
+                          <button className="button hand-play-btn" type="button" disabled={!playable} onClick={() => onPlayCard(card.instanceId)} title={card.spellText || "Cast spell"}>
+                            ✦ Cast
                           </button>
                         )}
                       </div>

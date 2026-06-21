@@ -5005,6 +5005,8 @@ body {
 .stats-faction-nums { color: var(--muted); font-size: 0.85rem; }
 .stats-window { margin-top: 0.8rem; font-size: 0.75rem; }
 
+.library-spell-text { color: #c8b3ff; font-weight: 600; }
+
 /* Always-visible End Turn (no scrolling to find it) */
 .end-turn-fab {
   position: fixed;

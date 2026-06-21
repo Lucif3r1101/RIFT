@@ -77,9 +77,23 @@ export function GuideModal({ open, section, onClose, onPlayIntro }: GuideModalPr
                   <ul className="guide-sub">
                     <li><strong>⚔ Summon</strong> a unit in <em>Attack</em> position — it uses its <b>ATK</b> and can attack next turn.</li>
                     <li><strong>🛡 Set</strong> a unit in <em>Defense</em> position — it guards you using its <b>DEF</b> and can't attack.</li>
-                    <li><strong>✦ Cast</strong> a spell — instant effect, then it sits in your spell zone.</li>
+                    <li><strong>✦ Cast</strong> a spell — it resolves instantly (auto-targets, no fiddly selection), then sits in your spell zone.</li>
                   </ul>
                 </li>
+              </ol>
+
+              <h4 className="guide-h">Spell types</h4>
+              <ul className="guide-bullets">
+                <li><strong>Empower</strong> — buffs your <em>strongest</em> unit (+ATK/+DEF).</li>
+                <li><strong>Rally</strong> — buffs <em>all</em> your units.</li>
+                <li><strong>Strike</strong> — deals damage to the <em>enemy's strongest</em> unit (destroys it if its DEF drops to 0).</li>
+                <li><strong>Volley</strong> — deals damage to <em>all</em> enemy units at once.</li>
+                <li><strong>Trade-off</strong> — a big buff to your strongest unit, but you pay some life for it.</li>
+                <li><strong>Utility</strong> — heal, draw, or gain mana.</li>
+              </ul>
+              <p>Every spell card says exactly what it does — just tap <strong>✦ Cast</strong> and it resolves.</p>
+
+              <ol className="guide-steps" start={4}>
                 <li><strong>Attack</strong> — tap one of your ready (⚔) units, then tap an enemy unit or the enemy directly.</li>
                 <li><strong>End Turn</strong> when you're done.</li>
               </ol>

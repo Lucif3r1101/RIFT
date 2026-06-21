@@ -4,18 +4,31 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CardModel } from "../models/Card.js";
 
-// Load the slug -> targetMode map once so the client knows where each spell aims.
-function loadTargetModes(): Record<string, string> {
+type SpellInfo = {
+  archetype?: string;
+  text?: string;
+  atk?: number;
+  def?: number;
+  damage?: number;
+  life?: number;
+  heal?: number;
+  draw?: number;
+  mana?: number;
+};
+
+// Load the slug -> spell-effect map once so the library/hand can show what
+// each spell actually does.
+function loadSpellInfo(): Record<string, SpellInfo> {
   const here = dirname(fileURLToPath(import.meta.url));
   for (const candidate of [
     resolve(here, "../data/cardEffects.generated.json"),
     resolve(here, "../../src/data/cardEffects.generated.json")
   ]) {
     try {
-      const raw = JSON.parse(readFileSync(candidate, "utf8")) as Record<string, { targetMode?: string }>;
-      const map: Record<string, string> = {};
+      const raw = JSON.parse(readFileSync(candidate, "utf8")) as Record<string, SpellInfo>;
+      const map: Record<string, SpellInfo> = {};
       for (const [slug, script] of Object.entries(raw)) {
-        if (script.targetMode) map[slug] = script.targetMode;
+        if (script.archetype) map[slug] = script;
       }
       return map;
     } catch {
@@ -25,7 +38,7 @@ function loadTargetModes(): Record<string, string> {
   return {};
 }
 
-const TARGET_MODES = loadTargetModes();
+const SPELL_INFO = loadSpellInfo();
 
 export function buildCardsRouter(): Router {
   const router = Router();
@@ -45,7 +58,9 @@ export function buildCardsRouter(): Router {
         cost: card.cost,
         attack: card.attack,
         health: card.health,
-        targetMode: TARGET_MODES[card.slug] ?? "all_opponents"
+        archetype: SPELL_INFO[card.slug]?.archetype,
+        spellText: SPELL_INFO[card.slug]?.text,
+        spell: SPELL_INFO[card.slug]
       }))
     });
   });

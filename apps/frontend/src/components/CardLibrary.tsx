@@ -14,6 +14,8 @@ export type LibraryCard = {
   cost: number;
   attack: number;
   health: number;
+  archetype?: string;
+  spellText?: string;
 };
 
 type CardLibraryProps = {
@@ -152,7 +154,11 @@ export function CardLibrary({ onClose }: CardLibraryProps) {
                     <p className="library-card-meta">
                       {FACTION_LABELS[card.faction] ?? card.faction} · {card.type === "unit" ? "Unit" : "Spell"}
                     </p>
-                    {card.description ? <p className="library-card-desc">{card.description}</p> : null}
+                    {card.type === "spell" && card.spellText ? (
+                      <p className="library-card-desc library-spell-text">✦ {card.spellText}</p>
+                    ) : card.description ? (
+                      <p className="library-card-desc">{card.description}</p>
+                    ) : null}
                     {card.type === "unit" ? (
                       <div className="library-stats">
                         <span className="stat-atk" title="Attack">⚔ {card.attack}</span>

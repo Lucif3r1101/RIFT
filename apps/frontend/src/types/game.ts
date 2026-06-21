@@ -57,7 +57,8 @@ export type RoomCard = {
   canAttack: boolean;
   position?: "attack" | "defense";
   positionChanged?: boolean;
-  targetMode?: string;
+  archetype?: string;
+  spellText?: string;
 };
 
 export type RoomPlayer = {

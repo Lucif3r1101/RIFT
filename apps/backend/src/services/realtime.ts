@@ -82,8 +82,9 @@ type RoomCard = {
   position: "attack" | "defense";
   // True once a unit has changed position this turn (one change per turn).
   positionChanged: boolean;
-  // Where this card's effect aims (mainly for spells): self vs opponents.
-  targetMode?: string;
+  // Spell info surfaced to the client so the cast button can show what it does.
+  archetype?: string;
+  spellText?: string;
 };
 
 type RoomBattleState = {
@@ -370,7 +371,8 @@ function buildFactionDeck(factionId: string): RoomCard[] {
     canAttack: false,
     position: "attack" as const,
     positionChanged: false,
-    targetMode: CARD_EFFECTS_BY_SLUG.get(card.slug)?.targetMode ?? "all_opponents"
+    archetype: CARD_EFFECTS_BY_SLUG.get(card.slug)?.archetype,
+    spellText: CARD_EFFECTS_BY_SLUG.get(card.slug)?.text
   }));
 
   return shuffleCards(cards);
@@ -459,22 +461,21 @@ function setRoomWinnerIfResolved(room: RoomState): void {
   }
 }
 
-type TargetMode = "self" | "single_opponent" | "all_opponents" | "random_opponent";
+type SpellArchetype = "empower" | "rally" | "strike" | "volley" | "tradeoff" | "utility";
 
-type EffectOp =
-  | { kind: "damage"; amount: number }
-  | { kind: "heal"; amount: number }
-  | { kind: "draw"; amount: number }
-  | { kind: "gain_mana"; amount: number }
-  | { kind: "reduce_opponent_mana"; amount: number }
-  | { kind: "modify_hand_cost"; amount: number };
-
+// One effect entry per card. Units are plain combat cards; spells carry an
+// archetype with rarity-scaled numbers and a human-readable `text`.
 type CardEffectScript = {
-  slug: string;
-  targetMode: TargetMode;
-  operations: EffectOp[];
-  unitBoardAttackBonus: number;
-  unitBoardHealthBonus: number;
+  kind: "unit" | "spell";
+  archetype?: SpellArchetype;
+  atk?: number;
+  def?: number;
+  damage?: number;
+  life?: number;
+  heal?: number;
+  draw?: number;
+  mana?: number;
+  text?: string;
 };
 
 function loadCardEffectsTable(): Record<string, CardEffectScript> {
@@ -502,23 +503,10 @@ const CARD_EFFECTS_BY_SLUG = new Map<string, CardEffectScript>(
   Object.entries(loadCardEffectsTable())
 );
 
-function selectTargets(room: RoomState, caster: RoomPlayer, targetMode: TargetMode, explicitTargetUserId?: string): RoomPlayer[] {
-  const opponents = room.players.filter((player) => player.userId !== caster.userId && player.health > 0);
-  if (targetMode === "self") {
-    return [caster];
-  }
-  if (targetMode === "single_opponent") {
-    const explicit = explicitTargetUserId ? opponents.find((player) => player.userId === explicitTargetUserId) : null;
-    return explicit ? [explicit] : opponents.slice(0, 1);
-  }
-  if (targetMode === "all_opponents") {
-    return opponents;
-  }
-  if (opponents.length === 0) {
-    return [];
-  }
-  const randomIndex = Math.floor(Math.random() * opponents.length);
-  return [opponents[randomIndex]];
+// Strongest unit = highest ATK, ties broken by DEF (health).
+function strongestUnit(units: RoomCard[]): RoomCard | null {
+  if (units.length === 0) return null;
+  return units.reduce((best, u) => (u.attack > best.attack || (u.attack === best.attack && u.health > best.health) ? u : best));
 }
 
 function executeCardEffect(
@@ -531,66 +519,75 @@ function executeCardEffect(
   const script = CARD_EFFECTS_BY_SLUG.get(card.slug);
 
   if (card.type === "unit") {
-    const unitCard: RoomCard = {
-      ...card,
-      attack: card.attack + (script?.unitBoardAttackBonus ?? 0),
-      health: card.health + (script?.unitBoardHealthBonus ?? 0),
-      canAttack: false,
-      position,
-      positionChanged: false
-    };
-    caster.board.push(unitCard);
-  }
-
-  if (!script) {
+    caster.board.push({ ...card, canAttack: false, position, positionChanged: false });
     return;
   }
 
-  const targets = selectTargets(room, caster, script.targetMode, targetUserId);
-  // Offensive ops (damage, mana burn) ALWAYS hit opponents — never the caster,
-  // even for self-targeted spells. Beneficial ops (heal/draw/mana) hit the caster.
+  if (!script || script.kind !== "spell" || !script.archetype) {
+    return;
+  }
+
   const opponents = room.players.filter((player) => player.userId !== caster.userId && player.health > 0);
-  const victimsFromTargets = targets.filter((player) => player.userId !== caster.userId);
-  const victims = victimsFromTargets.length > 0 ? victimsFromTargets : opponents;
+  const enemyUnits = opponents.flatMap((p) => p.board.map((unit) => ({ owner: p, unit })));
 
-  for (const op of script.operations) {
-    if (op.kind === "damage") {
-      for (const target of victims) {
-        target.health = Math.max(0, target.health - op.amount);
+  const destroyUnit = (owner: RoomPlayer, unit: RoomCard) => {
+    owner.board = owner.board.filter((entry) => entry.instanceId !== unit.instanceId);
+    owner.discard.push({ ...unit, canAttack: false });
+    syncPlayerCardCounts(owner);
+  };
+
+  switch (script.archetype) {
+    case "empower": {
+      const target = strongestUnit(caster.board);
+      if (target) {
+        target.attack += script.atk ?? 0;
+        target.health += script.def ?? 0;
       }
-      continue;
+      break;
     }
-
-    if (op.kind === "heal") {
-      caster.health = Math.min(30, caster.health + op.amount);
-      continue;
-    }
-
-    if (op.kind === "draw") {
-      drawCardsForPlayer(caster, op.amount);
-      continue;
-    }
-
-    if (op.kind === "gain_mana") {
-      caster.mana = Math.min(10, caster.mana + op.amount);
-      caster.maxMana = Math.min(10, Math.max(caster.maxMana, caster.mana));
-      continue;
-    }
-
-    if (op.kind === "reduce_opponent_mana") {
-      for (const target of victims) {
-        target.mana = Math.max(0, target.mana - op.amount);
+    case "rally": {
+      for (const unit of caster.board) {
+        unit.attack += script.atk ?? 0;
+        unit.health += script.def ?? 0;
       }
-      continue;
+      break;
     }
-
-    // modify_hand_cost — applies to whoever the spell legitimately targets
-    // (self-buff discounts the caster's hand; offensive raises opponents' costs).
-    for (const target of targets) {
-      target.hand = target.hand.map((entry) => ({
-        ...entry,
-        cost: Math.max(0, Math.min(10, entry.cost + op.amount))
-      }));
+    case "strike": {
+      const top = enemyUnits.reduce<{ owner: RoomPlayer; unit: RoomCard } | null>(
+        (best, cur) => (!best || cur.unit.attack > best.unit.attack ? cur : best),
+        null
+      );
+      if (top) {
+        top.unit.health -= script.damage ?? 0;
+        if (top.unit.health <= 0) destroyUnit(top.owner, top.unit);
+      }
+      break;
+    }
+    case "volley": {
+      for (const { owner, unit } of enemyUnits) {
+        unit.health -= script.damage ?? 0;
+        if (unit.health <= 0) destroyUnit(owner, unit);
+      }
+      break;
+    }
+    case "tradeoff": {
+      const target = strongestUnit(caster.board);
+      if (target) {
+        target.attack += script.atk ?? 0;
+        target.health += script.def ?? 0;
+      }
+      caster.health = Math.max(0, caster.health - (script.life ?? 0));
+      break;
+    }
+    case "utility":
+    default: {
+      if (script.heal) caster.health = Math.min(30, caster.health + script.heal);
+      if (script.draw) drawCardsForPlayer(caster, script.draw);
+      if (script.mana) {
+        caster.mana = Math.min(10, caster.mana + script.mana);
+        caster.maxMana = Math.min(10, Math.max(caster.maxMana, caster.mana));
+      }
+      break;
     }
   }
 }

@@ -7,10 +7,24 @@ import { UserCardModel } from "../models/UserCard.js";
 const STARTER_DECK_NAME = "Starter Deck";
 
 export async function seedBaseCards(): Promise<void> {
+  // $set keeps existing cards in sync with blueprint changes (names, descriptions,
+  // stats) on every boot — not just on first insert — so content updates ship
+  // on redeploy without a manual migration.
   const operations = ALL_CARD_BLUEPRINTS.map((card) => ({
     updateOne: {
       filter: { slug: card.slug },
-      update: { $setOnInsert: card },
+      update: {
+        $set: {
+          name: card.name,
+          description: card.description,
+          faction: card.faction,
+          type: card.type,
+          rarity: card.rarity,
+          cost: card.cost,
+          attack: card.attack,
+          health: card.health
+        }
+      },
       upsert: true
     }
   }));

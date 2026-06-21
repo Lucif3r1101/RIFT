@@ -37,7 +37,20 @@ type ApiCard = {
   cost: number;
   attack: number;
   health: number;
-  targetMode?: string;
+  archetype?: string;
+  spellText?: string;
+  spell?: SpellInfo;
+};
+
+type SpellInfo = {
+  archetype?: string;
+  atk?: number;
+  def?: number;
+  damage?: number;
+  life?: number;
+  heal?: number;
+  draw?: number;
+  mana?: number;
 };
 
 const START_HP = 20;
@@ -68,7 +81,8 @@ function toRoomCard(card: ApiCard, owner: string, n: number): RoomCard {
     canAttack: false,
     position: "attack",
     positionChanged: false,
-    targetMode: card.targetMode ?? "all_opponents"
+    archetype: card.archetype,
+    spellText: card.spellText
   };
 }
 
@@ -134,6 +148,7 @@ export function PracticeBoard({ onExit }: { onExit: () => void }) {
   const [state, setState] = useState<PState | null>(null);
   const [error, setError] = useState("");
   const botTimer = useRef<number | null>(null);
+  const spellBySlug = useRef<Record<string, SpellInfo>>({});
 
   // Build decks from the public card list.
   useEffect(() => {
@@ -142,6 +157,9 @@ export function PracticeBoard({ onExit }: { onExit: () => void }) {
       try {
         const res = await fetch(`${API_URL}/cards`);
         const data = (await res.json()) as { cards: ApiCard[] };
+        spellBySlug.current = Object.fromEntries(
+          data.cards.filter((c) => c.spell?.archetype).map((c) => [c.slug, c.spell as SpellInfo])
+        );
         const playable = data.cards.filter((c) => c.slug && (c.type === "unit" || c.type === "spell"));
         const units = playable.filter((c) => c.type === "unit");
         const pool = units.length >= DECK_SIZE ? units : playable;
@@ -331,11 +349,41 @@ export function PracticeBoard({ onExit }: { onExit: () => void }) {
           if (card.type === "unit") {
             s.you.board.push({ ...card, position: position ?? "attack", canAttack: false, positionChanged: false });
           } else {
-            // spell: self-target heals you, otherwise it hits the bot; then it stays in your spell zone
-            if (card.targetMode === "self") {
-              s.you.health = Math.min(START_HP, s.you.health + 2);
-            } else {
-              s.bot.health = Math.max(0, s.bot.health - 2);
+            // Spell: resolve its archetype (mirrors the backend), auto-targeting.
+            const spell = spellBySlug.current[card.slug];
+            const strongest = (units: RoomCard[]) =>
+              units.length === 0 ? null : units.reduce((b, u) => (u.attack > b.attack ? u : b));
+            const destroyBotUnit = (u: RoomCard) => {
+              s.bot.board = s.bot.board.filter((c) => c.instanceId !== u.instanceId);
+              s.bot.discard.push(u);
+            };
+            switch (spell?.archetype) {
+              case "empower": {
+                const t = strongest(s.you.board);
+                if (t) { t.attack += spell.atk ?? 0; t.health += spell.def ?? 0; }
+                break;
+              }
+              case "rally":
+                s.you.board.forEach((u) => { u.attack += spell.atk ?? 0; u.health += spell.def ?? 0; });
+                break;
+              case "strike": {
+                const t = strongest(s.bot.board);
+                if (t) { t.health -= spell.damage ?? 0; if (t.health <= 0) destroyBotUnit(t); }
+                break;
+              }
+              case "volley":
+                [...s.bot.board].forEach((u) => { u.health -= spell?.damage ?? 0; if (u.health <= 0) destroyBotUnit(u); });
+                break;
+              case "tradeoff": {
+                const t = strongest(s.you.board);
+                if (t) { t.attack += spell.atk ?? 0; t.health += spell.def ?? 0; }
+                s.you.health = Math.max(0, s.you.health - (spell.life ?? 0));
+                break;
+              }
+              default: // utility
+                if (spell?.heal) s.you.health = Math.min(START_HP, s.you.health + spell.heal);
+                if (spell?.mana) s.you.mana = Math.min(10, s.you.mana + spell.mana);
+                break;
             }
             if (s.you.spellZone.length < 5) s.you.spellZone.push(card);
             else s.you.discard.push(card);

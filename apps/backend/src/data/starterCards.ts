@@ -33,13 +33,15 @@ const FACTION_NAMES: Record<CardFaction, string> = {
   "abyss-revenant": "Abyss Revenant"
 };
 
-const FACTION_PREFIXES: Record<CardFaction, string> = {
-  "riftforged-sentinel": "Aegis",
-  "void-ranger": "Phase",
-  "ember-arcanist": "Ember",
-  "ironbound-beastmaster": "Pack",
-  chronomancer: "Chrono",
-  "abyss-revenant": "Soul"
+// Several evocative prefixes per faction so names feel varied (not "Aegis 1,
+// Aegis 2, Aegis 3…") while staying on-theme.
+const FACTION_PREFIXES: Record<CardFaction, string[]> = {
+  "riftforged-sentinel": ["Aegis", "Bulwark", "Bastion", "Hardlight", "Warforged", "Ironvow"],
+  "void-ranger": ["Phase", "Nightfall", "Voidborn", "Shadowstep", "Eclipse", "Riftshade"],
+  "ember-arcanist": ["Ember", "Cinder", "Pyre", "Ashen", "Flamecaller", "Scorch"],
+  "ironbound-beastmaster": ["Pack", "Feral", "Ironfang", "Wildborn", "Bramble", "Thornhide"],
+  chronomancer: ["Chrono", "Aeon", "Timeless", "Hourbound", "Paradox", "Epoch"],
+  "abyss-revenant": ["Soul", "Grave", "Hollow", "Wraithborn", "Abyssal", "Dreadbound"]
 };
 
 const UNIT_TITLES = [
@@ -101,7 +103,10 @@ const SPELL_TITLES = [
 ] as const;
 
 function makeCardName(faction: CardFaction, idx: number, type: CardBlueprint["type"]): string {
-  const prefix = FACTION_PREFIXES[faction];
+  const prefixes = FACTION_PREFIXES[faction];
+  // Cycle prefixes by a stride that won't line up with the title cycle, so the
+  // prefix+title pairing varies across the set.
+  const prefix = prefixes[(idx * 2 + (type === "spell" ? 1 : 0)) % prefixes.length];
   const title = type === "unit" ? UNIT_TITLES[idx - 1] : SPELL_TITLES[idx - 33];
   return `${prefix} ${title}`;
 }
