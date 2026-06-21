@@ -1058,6 +1058,12 @@ function TabletopBoard(props: GameBoardProps) {
           </>
         )}
       </section>
+
+      {inGame && isMyTurn ? (
+        <button className="end-turn-fab" type="button" onClick={onEndTurn} title="End your turn">
+          End Turn ⏭
+        </button>
+      ) : null}
     </div>
   );
 }
