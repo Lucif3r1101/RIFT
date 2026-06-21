@@ -47,11 +47,20 @@ export function getCardArtSources(slug: string) {
 }
 
 // <img onError> handler that walks primary → fallback → finalFallback once each.
+const CARD_BACK_FALLBACK = "/assets/cards/card-back.png";
+
 export function handleCardArtError(event: SyntheticEvent<HTMLImageElement, Event>, slug: string) {
   const image = event.currentTarget;
   const { fallback, finalFallback } = getCardArtSources(slug);
 
-  if (image.dataset.fallbackStage === "final") {
+  const stage = image.dataset.fallbackStage;
+  // Last resort: show the card back rather than a broken image.
+  if (stage === "back") {
+    return;
+  }
+  if (stage === "final") {
+    image.dataset.fallbackStage = "back";
+    image.src = CARD_BACK_FALLBACK;
     return;
   }
 
