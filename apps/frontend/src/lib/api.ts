@@ -25,5 +25,15 @@ export function formatTimer(deadline?: string): string {
 
   const remainingMs = new Date(deadline).getTime() - Date.now();
   const seconds = Math.max(0, Math.floor(remainingMs / 1000));
+  // Practice / untimed turns use a far-future deadline — show ∞ instead of a
+  // meaningless "3578s" countdown.
+  if (seconds >= 1800) {
+    return "∞";
+  }
+  if (seconds >= 60) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
   return `${seconds}s`;
 }

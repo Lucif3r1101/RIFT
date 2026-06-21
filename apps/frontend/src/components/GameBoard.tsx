@@ -977,6 +977,7 @@ function TabletopBoard(props: GameBoardProps) {
               );
             })()}
 
+            {handOpen ? <div className="hand-backdrop" onClick={() => setHandOpen(false)} aria-hidden="true" /> : null}
             <div className={`duel-dock ${handOpen ? "hand-open" : ""}`}>
             <div className="my-seat">
               <div className="my-seat-id">
@@ -1017,7 +1018,10 @@ function TabletopBoard(props: GameBoardProps) {
                 {me?.discard && me.discard.length > 0 ? (
                   <img className="pile-art" src={getCardArtSources(me.discard[me.discard.length - 1].slug).primary} alt="" onError={(e) => handleCardArtError(e, me.discard![me.discard!.length - 1].slug)} />
                 ) : (
-                  <img className="pile-art pile-empty-art" src={CARD_BACK_ASSET_PATH} alt="" aria-hidden="true" />
+                  <>
+                    <img className="pile-art pile-deck-back" src={deckBackUrl} alt="" aria-hidden="true" onError={(e) => { (e.currentTarget as HTMLImageElement).src = DECK_BACK_ASSET_PATH; }} />
+                    {deckCrestUrl ? <img className="pile-deck-crest" src={deckCrestUrl} alt="" aria-hidden="true" /> : null}
+                  </>
                 )}
                 <span key={`disc-${me?.discardCount ?? 0}`} className="pile-count pile-count-pop">{me?.discardCount ?? 0}</span>
                 <span className="pile-label">Graveyard</span>
@@ -1034,6 +1038,7 @@ function TabletopBoard(props: GameBoardProps) {
                   <span className="lg lg-spell">Spell</span>
                 </span>
                 <span className="muted">{privateHand.length} · ◆ {me ? `${me.mana}/${me.maxMana}` : "--"}</span>
+                <button className="hand-sheet-close" type="button" onClick={() => setHandOpen(false)} aria-label="Close hand">×</button>
               </header>
               <div className="hand-row">
                 {privateHand.length === 0 ? <p className="muted">No cards in hand.</p> : null}
