@@ -182,3 +182,48 @@ Figma Make gives you the **look and a clickable feel**; it mocks animations as d
 
 ## Build order (recommended)
 0 (system) → 1 (duel board) → approve the look → 2 (landing) → 3 (lobby) → 4 (library/detail) → 7 (nav) → 8 (overlays) → 5 (profile) → 6 (guide).
+
+---
+
+## SINGLE ONE-SHOT PROMPT (whole app in one generation)
+Use this when you want the entire app from a single Figma Make run (e.g. to conserve a fresh account's tokens). It trades per-screen depth for full coverage.
+
+```
+Build a COMPLETE, multi-screen, clickable prototype for a premium sci-fantasy trading card game, "Chronicles of the RIFT". Generate ALL screens listed below in ONE app, sharing a single design system, wired together with navigation. Target quality: Legends of Runeterra / Teamfight Tactics by Riot — a rich, painterly, LIVING arena, NOT a flat dark template.
+
+=== GLOBAL DESIGN SYSTEM (apply to every screen) ===
+- DEPTH not flatness: layered parallax backgrounds, soft volumetric light, atmospheric haze, gentle bloom on light sources only. Stages feel 3D.
+- Painterly materiality: carved stone, brushed gold trim, enchanted glass, worn leather — hand-painted textures, not gradients.
+- Color: deep dusk-blue/charcoal base, warm gold + ember-orange highlights. Six faction accents: Sentinel=gold, Void=violet, Ember=orange-red, Beast=bronze-green, Chrono=cyan, Abyss=crimson. Saturated where it matters, never washed out.
+- Frames: sculpted gold borders with subtle filigree corners; generous spacing, clear hierarchy — premium, not busy.
+- Type: refined display serif/blackletter-hybrid for headings; clean humanist sans for data/stats; strong size hierarchy.
+- Motion everywhere: hover/select/play trigger light, particles, motion; idle elements breathe (float, embers, dust).
+- Provide desktop (1440) AND mobile-portrait (390) for every screen; describe the reflow.
+
+=== CARD COMPONENT (reused everywhere) ===
+Sculpted gold frame, art in a beveled window, cost as an inset gem, ATK/DEF on metal plaques, faction-accent border glow, rarity shown by ornamentation, slight 3D cursor tilt.
+
+=== SCREENS TO GENERATE (all of them) ===
+
+1. LANDING / SIGN-IN: epic title screen — full-bleed painterly RIFT hero with parallax + embers, logo with glow, tagline, trust chips (6 realms · 300+ cards · live duels · free). Right: ornate panel with LOG IN / REGISTER tabs, elegant inputs, "Enter the Rift" gem button, "Forgot key?" link, "▶ Watch Trailer". Include register (avatar picker grid) + forgot-password (request + reset) states.
+
+2. LOBBY: a "war council chamber". Deck select, Players [2-6] selector, Mode toggle, faction picker (6 illustrated crest tiles + abilities). Buttons: Create Room, Quick Queue, Practice; "Enter Room Code" input. Player roster as portrait plaques with READY (green seal) / WAITING and [HOST] crown + Start Duel.
+
+3. DUEL BOARD (the hero screen, free-for-all, show 3-4 players): a deep painterly arena — opponents seated across an elevated far edge, you at the foreground bottom, a glowing RIFT core pulsing at center; haze, god-rays, drifting embers, parallax realm background. Opponents = sculpted seat plaques (portrait, HP gem, mana pips, hand count) with their units on their field section; active seat lights/breathes. Your side = units on plinths, hand fanned at bottom, avatar + deck + graveyard as 3D props. Clean top HUD: turn indicator, ornate timer dial, End Turn / Concede / Leave.
+   ANIMATIONS (show as sequences/keyframes): DRAW (card arcs from deck into hand with trail + sparkle), SUMMON (slam + shockwave + dust + wake glow), ATTACK (lunge along curved path, slashing arc, screen shake, damage number bursts up, recoil), DEFEND (shield snaps up, clang, ripple), SPELL (card dissolves into faction-color energy streaming to target, bloom burst), DESTROY (unit shatters into shards into graveyard), TURN CHANGE (light wipe + "[NAME]'S TURN" banner flourish, new seat ignites), IDLE (embers, core pulse, ready units breathe, hover tilt).
+   States: your-turn, opponent-turn (your side dims), unit-selected (valid targets ringed in faction color), empty field, full field, victory ("RIFT CORE CLAIMED") + defeat ("TIMELINE ERASED") overlays.
+   Mobile: opponents as a horizontal strip up top, your field mid, hand as a bottom-sheet that slides up, command bar pinned — fully playable, no vertical scroll.
+
+4. CARD LIBRARY + CARD DETAIL: gallery grid of premium card frames on textured backdrop; filters as ornate toggles (Faction / Type / Rarity) + search + count ("312 cards"). Detail = "champion codex": large card render + ornate data block (cost gem, ATK/DEF plaques, crest, name, rarity, ability flavor + rules). Include no-results + loading states.
+
+5. PROFILE: a "duelist dossier" — avatar in ornate portrait frame, callsign, faction crest; carved panels for Change Name, Change Avatar (tile grid, selected glows gold), Change Password (strength meter); optional stats strip.
+
+6. GUIDE / CODEX (tabbed lore tome): tabs LORE (worldbuilding prose + 3 pillars), HOW TO PLAY (illustrated steps: turn flow, combat math, hidden attack/defense bluff, spell types Empower/Rally/Strike/Volley/Trade-off/Utility, winning), CARD JOURNEY (Core/Synergy/Tech tiles), ABOUT THE DEV (clean bio card: Rishav Raj + Email + LinkedIn).
+
+7. TOP NAV + RIGHT SLIDE-IN DRAWER: slim premium top bar (logo + menu button); drawer with illustrated icon-chip items — Profile, Lore, How to Play, Card Journey, Card Library, About, Sound toggle, (admin) Analytics — and a red Logout pinned at bottom.
+
+8. OVERLAYS & SYSTEM STATES: Victory (golden burst) / Defeat (somber) overlays with Play Again / Lobby; Confirm dialog (Concede? / Leave & forfeit?) + post-concede choice (Spectate / Leave); Intro trailer modal; toasts (info/success/error); branded loader (RIFT core pulsing); empty + error panels.
+
+=== DELIVERABLE ===
+One connected prototype: a style-guide page first, then every screen above as its own page/frame (desktop + mobile), wired with navigation (sign-in → lobby → duel; menu → each page; concede/leave flows). Keep the premium living-arena look consistent across all of them.
+```
